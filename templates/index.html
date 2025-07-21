@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESXi VM Manager</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/log.css">
+</head>
+<body>
+    <div class="header">
+        <div class="filter-group">
+            <label>Группы:</label>
+            <div class="multiselect">
+                <div class="select-box" id="select-box">
+                    <select id="group-filter-display" disabled>
+                        <option id="groups-placeholder">Выберите группы</option>
+                    </select>
+                    <div class="over-select" id="over-select"></div>
+                </div>
+                <div id="checkboxes" class="checkboxes">
+                    <div class="checkboxes-header">
+                        <button id="clear-groups" class="small-btn">Очистить</button>
+                    </div>
+                    <div class="checkboxes-list">
+                        {% for group in groups %}
+                        <label>
+                            <input type="checkbox" class="group-checkbox" value="{{ group }}">
+                            <span>{{ group }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="button-group">
+            <button class="btn" id="clear-filter">Очистить таблицу</button>
+            <button class="cancel-btn" id="cancel-btn" disabled>Прервать выполнение</button>
+            <button class="execute-btn" id="execute-btn">Выполнить выбранные операции</button>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="table-container">
+            <div class="table-wrapper">
+                <table id="vm-table">
+                    <tr>
+                        <th class="group-col">Группа</th>
+                        <th class="vm-col">Виртуальная машина</th>
+                        <th class="action-col">
+                            <div class="column-header">
+                                <span>Удалить</span>
+                                <input type="checkbox" id="select-all-delete" class="header-checkbox">
+                            </div>
+                        </th>
+                        <th class="action-col">
+                            <div class="column-header">
+                                <span>Создать ВМ</span>
+                                <input type="checkbox" id="select-all-clone" class="header-checkbox">
+                            </div>
+                        </th>
+                        <th class="action-col">
+                            <div class="column-header">
+                                <span>Настроить HW</span>
+                                <input type="checkbox" id="select-all-hardware" class="header-checkbox">
+                            </div>
+                        </th>
+                        <th class="action-col">
+                            <div class="column-header">
+                                <span>Настроить ОС</span>
+                                <input type="checkbox" id="select-all-customize" class="header-checkbox">
+                            </div>
+                        </th>
+                        <th class="action-col">
+                            <div class="column-header">
+                                <span>Снапшот</span>
+                                <input type="checkbox" id="select-all-snapshot" class="header-checkbox">
+                            </div>
+                        </th>
+                        <th class="action-col">
+                            <div class="column-header">
+                                <span>Выключить</span>
+                                <input type="checkbox" id="select-all-poweroff" class="header-checkbox">
+                            </div>
+                        </th>
+                        <th class="action-col">
+                            <div class="column-header">
+                                <span>Включить</span>
+                                <input type="checkbox" id="select-all-poweron" class="header-checkbox">
+                            </div>
+                        </th>
+                    </tr>
+                <tbody id="vm-table-body">
+                    <!-- Данные будут загружены через JavaScript -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+        <div class="log-resizer" id="log-resizer">
+            <div class="resize-handle"></div>
+        </div>
+        <div class="log-container" id="log-container">
+            <div class="log-header">
+                <span>Лог выполнения</span>
+                <button id="clear-log" class="small-btn">Очистить</button>
+            </div>
+            <div class="log-content" id="log-content"></div>
+        </div>
+
+        <div id="message-container" class="message-container"></div>
+
+    </div>
+    <script type="module" src="/static/js/script.js"></script>
+    <script type="module" src="/static/js/log.js"></script>
+
+</body>
+</html>

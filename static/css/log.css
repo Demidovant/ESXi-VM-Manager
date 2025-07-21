@@ -1,0 +1,108 @@
+/* Основной контейнер для логов */
+.log-container {
+    flex: 0 0 auto;
+    height: 200px;
+    background: #1e1e1e;
+    color: #e0e0e0;
+    font-family: monospace;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 4px 4px 4px 4px;
+}
+
+/* Заголовок лог-панели */
+.log-header {
+    background: #333;
+    padding: 8px 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #444;
+}
+
+/* Область с содержимым логов */
+.log-content {
+    padding: 8px;
+    overflow-y: auto;
+    flex: 1;
+    font-size: 13px;
+    line-height: 1.3;
+    user-select: text; /* Разрешаем выделение текста */
+    -webkit-user-select: text; /* Для Safari */
+    -moz-user-select: text; /* Для Firefox */
+    white-space: pre-wrap; /* Сохраняем форматирование, но разрешаем перенос строк */
+    overflow-wrap: break-word; /* Перенос длинных строк */
+}
+
+/* Стили для выделенного текста в логах */
+.log-content::selection {
+    background: #e0e0e0;
+    color: #333;
+    text-shadow: none;
+}
+
+/* Для Firefox */
+.log-content::-moz-selection {
+    background: #e0e0e0;
+    color: #333;
+    text-shadow: none;
+}
+
+/* Ресайзер для изменения высоты лог-панели */
+.log-resizer {
+    height: 10px;
+    background: #e0e0e0;
+    cursor: row-resize;
+    position: relative;
+    margin: 1px 0;
+}
+
+/* Ручка ресайзера */
+.resize-handle {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 30px;
+    height: 4px;
+    background: #aaa;
+    border-radius: 2px;
+}
+
+.log-resizer:hover {
+    background: #d0d0d0;
+}
+
+.log-resizer:hover .resize-handle {
+    background: #888;
+}
+
+/* Цвета для разных типов сообщений */
+.log-error {
+    color: #ff6b6b;
+}
+
+.log-warning {
+    color: #ffd166;
+}
+
+/* Анимация внутреннего свечения */
+@keyframes log-flash {
+    0% {
+        box-shadow: inset 0 0 0 rgba(255, 255, 255, 0);
+        background-color: #1e1e1e;
+    }
+    50% {
+        box-shadow: inset 0 0 200px rgba(255, 255, 255, 1);
+        background-color: #2a2a2a;
+    }
+    100% {
+        box-shadow: inset 0 0 0 rgba(255, 255, 255, 0);
+        background-color: #1e1e1e;
+    }
+}
+
+.log-flash {
+    animation: log-flash 0.5s ease-out;
+}

@@ -1,0 +1,413 @@
+* {
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background-color: #f5f5f5;
+    color: #333;
+}
+
+body {
+    padding: 10px 20px 5px 20px;
+    display: flex;
+    flex-direction: column;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #ddd;
+    flex-shrink: 0;
+}
+
+.button-group {
+    display: flex;
+    gap: 10px; /* Расстояние между кнопками */
+    margin-left: auto; /* Прижимает группу к правому краю */
+}
+
+.filter-group {
+    margin-right: 20px;
+    display: flex;
+    align-items: center;
+}
+
+.filter-group label {
+    margin-right: 10px;
+    font-weight: 500;
+}
+
+.btn {
+    background: #4a86e8;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background 0.3s;
+}
+
+.cancel-btn:disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+}
+
+.btn:hover {
+    background: #3a76d8;
+}
+
+.btn:disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+}
+
+.small-btn {
+    background: #6c757d;
+    color: white;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: background 0.3s;
+}
+
+.small-btn:hover {
+    background: #5a6268;
+}
+
+.table-container {
+    flex: 1;
+    min-height: 100px;
+    overflow-y: auto; /* Включаем вертикальный скролл только при необходимости */
+    background: #fff;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+}
+
+.table-wrapper {
+    overflow: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    /*table-layout: fixed;*/
+    table-layout: auto; /* Ширина колонок подстраивается под контент */
+}
+
+
+td {
+    padding: 7px 15px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+    vertical-align: middle;
+    font-size: 12px;
+    user-select: text; /* Разрешает выделение текста */
+    -webkit-user-select: text; /* Для Safari */
+    -moz-user-select: text; /* Для Firefox */
+    -ms-user-select: text; /* Для IE/Edge */
+    cursor: text; /* Меняем курсор при наведении */
+}
+
+th {
+    padding: 4px 8px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+    vertical-align: middle;
+    font-size: 12px;
+    background-color: #f9f9f9;
+    font-weight: 600;
+    color: #444;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    box-shadow: 0 2px 2px -1px rgba(0,0,0,0.1);
+    user-select: none; /* Заголовки можно оставить невыделяемыми */
+}
+
+.group-col {
+    /*width: 20%;*/
+    width: auto !important;
+    min-width: 50px;
+}
+
+.vm-col {
+    /*width: 25%;*/
+    width: auto !important;
+    min-width: 50px;
+}
+
+.action-col {
+    width: 10%;
+    min-width: 100px;
+}
+
+.header-checkbox {
+    width: 24px;
+    height: 24px;
+    margin-top: 5px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.column-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 3px;
+}
+
+.column-header span {
+    text-align: center;
+    white-space: nowrap;
+}
+
+tbody tr:hover {
+    background-color: #f5f9ff;
+}
+
+.execute-btn {
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background 0.3s;
+    margin-left: auto;  /* Это выравнивает кнопку вправо */
+    display: block;
+}
+
+.execute-btn:hover {
+    background: #218838;
+}
+
+.execute-btn:disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+}
+
+.cancel-btn {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background 0.3s;
+}
+
+.cancel-btn:disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+}
+
+.group-header {
+    background-color: #e9f0f8 !important;
+    font-weight: bold;
+}
+
+.footer {
+    text-align: center;
+    padding: 10px;
+}
+
+.multiselect {
+    position: relative;
+    width: 300px;
+}
+
+.select-box {
+    position: relative;
+}
+
+.select-box select {
+    width: 100%;
+    padding: 8px 30px 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: white;
+    cursor: pointer;
+    appearance: none;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.select-box::after {
+    content: "▼";
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 10px;
+    color: #666;
+}
+
+.over-select {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    cursor: pointer;
+}
+
+.select-box:disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+}
+
+.checkboxes {
+    display: none;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: white;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    max-height: 570px;
+    overflow-y: auto;
+    z-index: 1000;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.checkboxes-list {
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.checkboxes-header {
+    padding: 5px;
+    border-bottom: 1px solid #eee;
+    text-align: right;
+    position: sticky;
+    top: 0;
+    background: white;
+}
+
+.checkboxes label {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    cursor: pointer;
+    margin: 0;
+    font-size: 14px;
+}
+
+.checkboxes label:hover {
+    background-color: #f5f5f5;
+}
+
+.checkboxes span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.message-container {
+    position: fixed;
+    bottom: 20px;
+    right: 40px;
+    z-index: 1000;
+    max-width: 50%;
+}
+
+.message {
+    padding: 15px 20px;
+    border-radius: 4px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+    margin-bottom: 10px;
+    animation: fadeIn 0.3s;
+    color: white;
+    font-size: 20px;
+}
+
+.message.success {
+    background-color: #28a745;
+}
+
+.message.error {
+    background-color: #dc3545;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeOut {
+    from { opacity: 1; transform: translateY(0); }
+    to { opacity: 0; transform: translateY(20px); }
+}
+
+input[type="checkbox"] {
+    width: 12px;
+    height: 12px;
+    cursor: pointer;
+}
+
+.checkboxes input[type="checkbox"] {
+    width: 12px;
+    height: 12px;
+    margin-right: 10px;
+}
+
+.operation-checkbox {
+    transform: scale(1.5);
+    margin: 0 auto;
+    display: block;
+    position: relative;
+    z-index: 1;
+}
+
+.column-header input[type="checkbox"] {
+    /*transform: scale(1.2);*/
+    margin-top: 5px;
+}
+
+input[type="checkbox"]:indeterminate {
+    background-color: #4a86e8;
+    border-color: #4a86e8;
+    position: relative;
+}
+
+input[type="checkbox"]:indeterminate::after {
+    content: "-";
+    position: absolute;
+    color: white;
+    font-size: 1px;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.main-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    gap: 2px;
+}
+
+.over-select[disabled] {
+    opacity: 0.1;
+    pointer-events: none;
+    cursor: not-allowed;
+}
