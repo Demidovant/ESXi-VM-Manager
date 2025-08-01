@@ -93,6 +93,9 @@ def connect_to_host(
         print(f"[X] Неожиданная ошибка подключения: {str(e)}")
         print(f"[!] Трассировка ошибки:\n{traceback.format_exc()}")
 
+    finally:
+        print("=" * 70)
+
     return None
 
 

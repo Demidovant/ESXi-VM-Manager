@@ -20,13 +20,13 @@ def customize_vm_os(service_instance, vm, vm_config):
     :param timeout: время ожидания готовности ОС (сек)
     """
 
-    static_ip = vm_config.get('STATIC_IP'),
-    netmask = vm_config.get('NETMASK'),
-    gateway = vm_config.get('GATEWAY'),
-    dns = vm_config.get('DNS'),
-    network_name = vm_config.get('NETWORK_NAME'),
-    username = vm_config.get('OS_USER_NAME'),
-    password = vm_config.get('OS_USER_PASSWORD'),
+    static_ip = vm_config.get('STATIC_IP')
+    netmask = vm_config.get('NETMASK')
+    gateway = vm_config.get('GATEWAY')
+    dns = vm_config.get('DNS')
+    network_name = vm_config.get('NETWORK_NAME')
+    username = vm_config.get('OS_USER_NAME')
+    password = vm_config.get('OS_USER_PASSWORD')
     hostname = vm_config.get('TARGET_VM_HOSTNAME')
 
     if not vm:
@@ -55,6 +55,8 @@ def customize_vm_os(service_instance, vm, vm_config):
         customize_generic_linux(vm, static_ip, netmask, gateway, dns, username, password, service_instance, hostname)
     else:
         print(f"[!] Настройка для ОС {os_type} не реализована")
+
+    print("=" * 70)
 
 
 def wait_for_guest_ready(vm, service_instance, timeout=300):
@@ -216,15 +218,15 @@ def customize_ubuntu_debian(vm, static_ip, netmask, gateway, dns, username, pass
 
     print("[*] Настраиваем hostname...")
     # Установка /etc/hostname
-    cmd = f"-c 'echo \"{hostname}\" | sudo tee /etc/hostname'"
+    cmd = f"-c 'echo \"{password}\" | sudo -S sh -c \"echo \\\"{hostname}\\\" > /etc/hostname\"'"
     _execute_guest_command(vm, "/bin/bash", cmd, username, password, service_instance)
 
     # Обновление /etc/hosts
-    cmd = f"-c \"sudo sed -i '/127.0.1.1/d' /etc/hosts && echo '127.0.1.1 {hostname}' | sudo tee -a /etc/hosts\""
+    cmd = f"-c 'echo \"{password}\" | sudo -S sh -c \"sed -i \\\"/127.0.1.1/d\\\" /etc/hosts && echo \\\"127.0.1.1 {hostname}\\\" >> /etc/hosts\"'"
     _execute_guest_command(vm, "/bin/bash", cmd, username, password, service_instance)
 
     # Применение hostname
-    cmd = f"-c \"sudo hostnamectl set-hostname {hostname}\""
+    cmd = f"-c 'echo \"{password}\" | sudo -S hostnamectl set-hostname {hostname}'"
     _execute_guest_command(vm, "/bin/bash", cmd, username, password, service_instance)
 
     print("[+] Настройка hostname завершена")
@@ -233,7 +235,7 @@ def customize_ubuntu_debian(vm, static_ip, netmask, gateway, dns, username, pass
         ethernets:
             ens33:
                 addresses:
-                - {static_ip}/24
+                - {static_ip}/{netmask}
                 nameservers:
                     addresses:
                     - {dns}
@@ -243,23 +245,30 @@ def customize_ubuntu_debian(vm, static_ip, netmask, gateway, dns, username, pass
                     via: {gateway}
         version: 2
     """
+
+    # Очистка старых конфигов netplan
+    print("[*] Удаляем старые конфиги Netplan...")
+    cmd = f"-c 'echo \"{password}\" | sudo -S sh -c \"rm -f /etc/netplan/*\"'"
+    _execute_guest_command(vm, "/bin/bash", cmd, username, password, service_instance)
+
     # Экранируем кавычки и новые строки для bash
     yaml_content_escaped = yaml_content.replace("'", "'\"'\"'").replace("\n", "\\n")
 
     print("[*] Записываем netplan конфиг...")
-    cmd = f"-c 'printf \"{yaml_content_escaped}\" | sudo tee /etc/netplan/50-cloud-init.yaml'"
+    cmd = f"-c 'echo \"{password}\" | sudo -S sh -c \"printf \\\"{yaml_content_escaped}\\\" > /etc/netplan/50-cloud-init.yaml\"'"
     _execute_guest_command(vm, "/bin/bash", cmd, username, password, service_instance)
 
-    print("[*] Применяем netplan...")
-    cmd = "-c \"sudo netplan apply\""
+    # Применение конфига
+    print("[*] Применяем Netplan...")
+    cmd = f"-c 'echo \"{password}\" | sudo -S netplan apply'"
     _execute_guest_command(vm, "/bin/bash", cmd, username, password, service_instance)
 
+    # Перезапуск networking (для надежности)
     print("[*] Перезапускаем networking сервис...")
-    cmd = "-c \"sudo systemctl restart networking\""
+    cmd = f"-c 'echo \"{password}\" | sudo -S systemctl restart systemd-networkd'"
     _execute_guest_command(vm, "/bin/bash", cmd, username, password, service_instance)
 
     print("[+] Настройка сети завершена")
-
     print("[+] Настройка Ubuntu/Debian завершена")
 
 
@@ -381,6 +390,7 @@ def customize_vm_hardware(vm, vm_config):
 
     cpu_count = int(cpu) if (cpu := vm_config.get('CPU_COUNT')) else None
     memory_mb = int(mem) if (mem := vm_config.get('MEMORY_MB')) else None
+    network_name = vm_config.get('NETWORK_NAME')
 
     # Получаем текущее состояние ВМ
     was_powered_on = vm.runtime.powerState == vim.VirtualMachinePowerState.poweredOn
@@ -395,10 +405,58 @@ def customize_vm_hardware(vm, vm_config):
             memoryMB=memory_mb
         )
 
-        print(f"[*] Применяем конфигурацию: {cpu_count} CPU, {memory_mb} MB RAM...")
+        # Если указано сетевое имя - меняем сетевую карту
+        if network_name:
+            # Получаем список всех сетей на хосте
+            host = vm.runtime.host
+            network = None
+            for net in host.network:
+                if net.name == network_name:
+                    network = net
+                    break
+
+            if not network:
+                raise Exception(f"Сеть '{network_name}' не найдена на хосте")
+
+            # Находим первый сетевой адаптер в конфигурации ВМ
+            for dev in vm.config.hardware.device:
+                if isinstance(dev, vim.vm.device.VirtualEthernetCard):
+                    # Создаем спецификацию изменения устройства
+                    nic_spec = vim.vm.device.VirtualDeviceSpec()
+                    nic_spec.operation = vim.vm.device.VirtualDeviceSpec.Operation.edit
+                    nic_spec.device = dev
+
+                    # Создаем правильный backing в зависимости от типа сети
+                    if isinstance(network, vim.Network):
+                        nic_spec.device.backing = vim.vm.device.VirtualEthernetCard.NetworkBackingInfo()
+                        nic_spec.device.backing.network = network
+                        nic_spec.device.backing.deviceName = network_name
+                    elif isinstance(network, vim.dvs.DistributedVirtualPortgroup):
+                        nic_spec.device.backing = vim.vm.device.VirtualEthernetCard.DistributedVirtualPortBackingInfo()
+                        nic_spec.device.backing.port = vim.dvs.PortConnection()
+                        nic_spec.device.backing.port.portgroupKey = network.key
+                        nic_spec.device.backing.port.switchUuid = network.config.distributedVirtualSwitch.uuid
+
+                    # Обновляем connectable
+                    nic_spec.device.connectable = vim.vm.device.VirtualDevice.ConnectInfo()
+                    nic_spec.device.connectable.connected = True
+                    nic_spec.device.connectable.startConnected = True
+
+                    # Добавляем изменение в конфигурацию
+                    if not hasattr(config_spec, 'deviceChange'):
+                        config_spec.deviceChange = []
+                    config_spec.deviceChange.append(nic_spec)
+
+                    print(f"[*] Меняем сетевой адаптер на сеть '{network_name}'...")
+                    break
+
+        print(f"[*] Применяем конфигурацию: {cpu_count} CPU, {memory_mb} MB RAM" +
+              (f", сеть '{network_name}'" if network_name else "") + "...")
         task = vm.ReconfigVM_Task(config_spec)
         wait_for_task(task, "Изменение конфигурации ВМ")
         print("[+] Конфигурация ВМ успешно обновлена.")
+
+        print("=" * 70)
 
         if was_powered_on:
             print("[*] Включаем ВМ так как изначально она была включена...")

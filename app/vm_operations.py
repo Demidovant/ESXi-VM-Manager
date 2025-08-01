@@ -71,6 +71,7 @@ def vm_power_off(vm, shutdown_timeout=60, poweroff_timeout=10):
     """
     if vm.runtime.powerState != vim.VirtualMachinePowerState.poweredOn:
         print(f"[!] ВМ {vm.name} уже выключена.")
+        print("=" * 70)
         return
 
     print(f"[*] Начинаем процесс выключения ВМ {vm.name}")
@@ -113,6 +114,8 @@ def vm_power_off(vm, shutdown_timeout=60, poweroff_timeout=10):
         print(f"[+] ВМ {vm.name} успешно выключена через power off.")
     except Exception as poweroff_error:
         print(f"[!!!] Критическая ошибка при power off ВМ {vm.name}: {str(poweroff_error)}")
+    finally:
+        print("=" * 70)
 
 def vm_power_on(vm):
     if vm.runtime.powerState != vim.VirtualMachinePowerState.poweredOn:
@@ -122,6 +125,8 @@ def vm_power_on(vm):
         print(f"[+] ВМ {vm.name} успешно запущена.")
     else:
         print(f"[!] ВМ {vm.name} уже запущена.")
+
+    print("=" * 70)
 
 
 def vm_reboot(vm):
@@ -134,6 +139,8 @@ def vm_reboot(vm):
     else:
         print(f"[!] ВМ {vm.name} уже выключена. Просто запускаем.")
         vm_power_on(vm)
+
+    print("=" * 70)
 
 
 def vm_clone(si, vm_config):
@@ -165,8 +172,33 @@ def vm_clone(si, vm_config):
     from vm_snapshot import revert_to_snapshot
     revert_to_snapshot(source_vm, source_snapshot_name)
 
+    # Отключаем все DVD-приводы
+    config_spec = vim.vm.ConfigSpec()
+    devices_to_edit = []
+
+    for dev in source_vm.config.hardware.device:
+        if isinstance(dev, vim.vm.device.VirtualCdrom):
+            # Создаем спецификацию для отключения этого устройства
+            cd_spec = vim.vm.device.VirtualDeviceSpec()
+            cd_spec.operation = vim.vm.device.VirtualDeviceSpec.Operation.edit
+            cd_spec.device = dev
+
+            # Создаем пустую backing-спецификацию (это эквивалентно извлечению диска)
+            cd_spec.device.backing = vim.vm.device.VirtualCdrom.RemotePassthroughBackingInfo()
+            cd_spec.device.connectable = vim.vm.device.VirtualDevice.ConnectInfo()
+            cd_spec.device.connectable.connected = False
+            cd_spec.device.connectable.startConnected = False
+
+            devices_to_edit.append(cd_spec)
+
+    if devices_to_edit:
+        config_spec.deviceChange = devices_to_edit
+        print(f"[*] Извлекаем диски из DVD-приводов...")
+        task = source_vm.ReconfigVM_Task(config_spec)
+        wait_for_task(task)  # Нужно дождаться завершения
+
     # Настройки клонирования
-    relocate_spec = vim.vm.RelocateSpec(datastore=datastore, pool=esxi_host.parent.resourcePool)
+    relocate_spec = vim.vm.RelocateSpec(datastore=datastore, pool=esxi_host.parent.resourcePool, diskMoveType='moveAllDiskBackingsAndDisallowSharing')
 
     clone_spec = vim.vm.CloneSpec(
         location=relocate_spec,
@@ -205,6 +237,8 @@ def vm_clone(si, vm_config):
     print(f"[+] ВМ '{target_vm_name}' успешно клонирована")
     return task.info.result
 
+    print("=" * 70)
+
 
 def vm_delete(vm):
     """
@@ -218,8 +252,10 @@ def vm_delete(vm):
             vm_power_off(vm)
 
         task = vm.Destroy_Task()
-        wait_for_task(task, description=f"Удаление ВМ {vm.name}")
+        # wait_for_task(task, description=f"Удаление ВМ {vm.name}")
 
         print(f"[+] ВМ '{vm.name}' успешно удалена.")
     except Exception as e:
         print(f"[!] Ошибка при удалении ВМ '{vm.name}': {e}")
+
+    print("=" * 70)

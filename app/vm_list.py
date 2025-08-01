@@ -35,6 +35,7 @@ def get_vm_by_name(si, name):
             if vm.name == name:
                 return vm
         print(f"[!] ВМ {name} не найдена !!!")
+        print("=" * 70)
         return None
     finally:
         vm_view.Destroy()
