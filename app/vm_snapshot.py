@@ -43,6 +43,7 @@ def revert_to_snapshot(vm, snapshot_name):
 
         if current_snapshot and current_snapshot._moId == snapshot.snapshot._moId:
             print(f"[=] ВМ {vm.name} уже находится в снапшоте '{snapshot_name}', откат не требуется")
+            print("=" * 70)
             return
 
         print(f"[*] Откатываем ВМ {vm.name} к снапшоту '{snapshot_name}'...")

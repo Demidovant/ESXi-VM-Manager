@@ -34,8 +34,12 @@ def vm_detect_os_type(vm) -> str:
 
 
 def wait_for_task(task, description="Операция"):
+    # Сначала даем задаче хотя бы немного времени на старт
+    time.sleep(0.1)
+
     while task.info.state == vim.TaskInfo.State.running:
-        time.sleep(1)
+        time.sleep(0.1)  # Уменьшаем интервал проверки
+
     if task.info.state == vim.TaskInfo.State.success:
         return task.info.result
     else:
