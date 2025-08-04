@@ -1,5 +1,7 @@
+from pyVmomi import vim
 from datetime import datetime
 from vm_operations import vm_power_on, vm_power_off, wait_for_task
+
 
 def find_snapshot(vm, snapshot_name):
     """Рекурсивно ищет снапшот по имени в дереве снапшотов ВМ."""
@@ -71,17 +73,47 @@ def create_snapshot(vm, vm_config, memory=False, quiesce=False):
     :param quiesce: Применять quiescing (по умолчанию False)
     """
 
-    name = vm_config.get('TARGET_SNAPSHOT_NAME') or datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    description = vm_config.get('TARGET_SNAPSHOT_DESCRIPTION') or ""
+    snapshot_name = (
+        vm_config.get('snapshot_name') or  # из поля ввода в браузере
+        vm_config.get('TARGET_SNAPSHOT_NAME') or  # из CSV
+        f"snapshot_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"  # по умолчанию
+    )
+    # snapshot_name = vm_config.get('TARGET_SNAPSHOT_NAME') or datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
-    print(f"[*] Создание снапшота '{name}' для ВМ {vm.name}...")
+    # Определяем description
+    if vm_config.get('snapshot_name'):  # Если имя задано в браузере
+        description = ""
+    else:  # Если имя из CSV или по умолчанию
+        description = vm_config.get('TARGET_SNAPSHOT_DESCRIPTION', "")
+
+    print(f"[*] Создание снапшота '{snapshot_name}' для ВМ {vm.name}...")
+
+    # Получаем текущее состояние ВМ
+    was_powered_on = vm.runtime.powerState == vim.VirtualMachinePowerState.poweredOn
+
+    if was_powered_on:
+        vm_power_off(vm)
 
     task = vm.CreateSnapshot_Task(
-        name=name,
+        name=snapshot_name,
         description=description,
         memory=memory,
         quiesce=quiesce
     )
 
-    wait_for_task(task, description=f"Создание снапшота '{name}'")
-    print(f"[+] Снапшот '{name}' успешно создан")
+    try:
+        wait_for_task(task, description=f"Создание снапшота '{snapshot_name}'")
+        print(f"[+] Снапшот '{snapshot_name}' успешно создан")
+
+        print("=" * 70)
+
+        if was_powered_on:
+            print("[*] Включаем ВМ так как изначально она была включена...")
+            vm_power_on(vm)
+
+    except Exception as e:
+        print(f"[-] Ошибка при создании снапшота: {str(e)}")
+        if was_powered_on:
+            print("[*] Включаем ВМ так как изначально она была включена...")
+            vm_power_on(vm)
+        raise

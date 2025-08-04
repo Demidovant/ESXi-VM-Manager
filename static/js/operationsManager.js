@@ -68,6 +68,24 @@ export class OperationsManager {
     async executeOperations() {
         const { vmOperations, allOperations } = this.vmTableManager.getSelectedOperations();
 
+            // Проверка имени снапшота, если есть операции снапшота
+        if (Array.from(allOperations).includes('snapshot')) {
+            const snapshotNameInput = document.querySelector(SELECTORS.snapshotNameInput);
+            const snapshotName = snapshotNameInput.value.trim();
+
+            if (snapshotName && !/^[a-zA-Z0-9_-]+$/.test(snapshotName)) {
+                this.showMessage('Имя снапшота должно содержать только латинские буквы, цифры, дефисы и подчеркивания', true);
+                return;
+            }
+
+            // Добавляем имя снапшота в данные операций
+            vmOperations.forEach(vm => {
+                if (vm.operations.includes('snapshot')) {
+                    vm.snapshot_name = snapshotName;
+                }
+            });
+        }
+
         if (vmOperations.length === 0) {
             this.showMessage('Не выбрано ни одной ВМ для операций', true);
             return;

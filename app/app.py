@@ -147,6 +147,9 @@ def execute_operations():
                         elif op_name == 'customize':
                             customize_vm_os(si, vm, vm_config)
                         elif op_name == 'snapshot':
+                            vm_config = vm_config_map.get(vm_name, {}).copy()
+                            if 'snapshot_name' in vm_data:
+                                vm_config['snapshot_name'] = vm_data['snapshot_name']
                             create_snapshot(vm, vm_config)
                         elif op_name == 'poweroff':
                             vm_power_off(vm)

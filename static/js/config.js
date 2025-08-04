@@ -15,5 +15,6 @@ export const SELECTORS = {
     overSelect: '#over-select',
     messageContainer: '#message-container',
     groupCheckboxes: '.group-checkbox',
-    selectBox: '#select-box'
+    selectBox: '#select-box',
+    snapshotNameInput: '#snapshot-name-input',
 };
