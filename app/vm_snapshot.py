@@ -32,16 +32,37 @@ def revert_to_snapshot(vm, snapshot_name):
     if not snapshot:
         raise Exception(f"Снапшот '{snapshot_name}' не найден")
 
-    current_snapshot = vm.snapshot.currentSnapshot if vm.snapshot else None
+    # Получаем текущее состояние ВМ
+    was_powered_on = vm.runtime.powerState == vim.VirtualMachinePowerState.poweredOn
 
-    if current_snapshot and current_snapshot._moId == snapshot.snapshot._moId:
-        print(f"[=] ВМ {vm.name} уже находится в снапшоте '{snapshot_name}', откат не требуется")
-        return
+    if was_powered_on:
+        vm_power_off(vm)
 
-    print(f"[*] Откатываем ВМ {vm.name} к снапшоту '{snapshot_name}'...")
-    task = snapshot.snapshot.RevertToSnapshot_Task()
-    wait_for_task(task, "Откат к снапшоту")
-    print("[+] Снапшот успешно восстановлен")
+    try:
+        current_snapshot = vm.snapshot.currentSnapshot if vm.snapshot else None
+
+        if current_snapshot and current_snapshot._moId == snapshot.snapshot._moId:
+            print(f"[=] ВМ {vm.name} уже находится в снапшоте '{snapshot_name}', откат не требуется")
+            return
+
+        print(f"[*] Откатываем ВМ {vm.name} к снапшоту '{snapshot_name}'...")
+        task = snapshot.snapshot.RevertToSnapshot_Task()
+        wait_for_task(task, "Откат к снапшоту")
+        print("[+] Снапшот успешно восстановлен")
+
+        print("=" * 70)
+
+        if was_powered_on:
+            print("[*] Включаем ВМ так как изначально она была включена...")
+            vm_power_on(vm)
+
+    except Exception as e:
+        print(f"[-] Ошибка при создании снапшота: {str(e)}")
+        print("=" * 70)
+        if was_powered_on:
+            print("[*] Включаем ВМ так как изначально она была включена...")
+            vm_power_on(vm)
+        raise
 
 
 
@@ -113,6 +134,7 @@ def create_snapshot(vm, vm_config, memory=False, quiesce=False):
 
     except Exception as e:
         print(f"[-] Ошибка при создании снапшота: {str(e)}")
+        print("=" * 70)
         if was_powered_on:
             print("[*] Включаем ВМ так как изначально она была включена...")
             vm_power_on(vm)

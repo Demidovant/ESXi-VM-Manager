@@ -86,6 +86,28 @@ export class OperationsManager {
             });
         }
 
+                // Проверка имени снапшота для отката
+        if (Array.from(allOperations).includes('revert')) {
+            const revertNameInput = document.querySelector(SELECTORS.revertNameInput);
+            const revertName = revertNameInput.value.trim();
+
+            if (!revertName) {
+                this.showMessage('Для отката необходимо указать имя снапшота', true);
+                return;
+            }
+
+            if (!/^[a-zA-Z0-9_-]+$/.test(revertName)) {
+                this.showMessage('Имя снапшота должно содержать только латинские буквы, цифры, дефисы и подчеркивания', true);
+                return;
+            }
+
+            vmOperations.forEach(vm => {
+                if (vm.operations.includes('revert')) {
+                    vm.revert_name = revertName;
+                }
+            });
+        }
+
         if (vmOperations.length === 0) {
             this.showMessage('Не выбрано ни одной ВМ для операций', true);
             return;
@@ -127,10 +149,11 @@ export class OperationsManager {
             if (!response.ok) throw new Error('Ошибка сервера');
 
             const data = await response.json();
-            let message = `${data.message}\nУспешно: ${data.success_count}/${data.total_operations}`;
-            if (data.errors?.length > 0) {
-                message += `\nОшибки: ${data.errors.length}`;
-            }
+            let message = `${data.message}`;
+            // let message = `${data.message}\nУспешно: ${data.success_count}/${data.total_operations}`;
+            // if (data.errors?.length > 0) {
+            //     message += `\nОшибки: ${data.errors.length}`;
+            // }
             this.showMessage(message, data.status === "error");
 
         } catch (error) {

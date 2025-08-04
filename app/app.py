@@ -151,6 +151,15 @@ def execute_operations():
                             if 'snapshot_name' in vm_data:
                                 vm_config['snapshot_name'] = vm_data['snapshot_name']
                             create_snapshot(vm, vm_config)
+                        elif op_name == 'revert':
+                            revert_name = vm_data.get('revert_name')
+                            if not revert_name:
+                                error_msg = f"Не указано имя снапшота для отката ВМ {vm_name}"
+                                errors.append(error_msg)
+                                vm_errors[vm_name].append(error_msg)
+                                operation_results[op_key] = 'error'
+                                continue
+                            revert_to_snapshot(vm, revert_name)
                         elif op_name == 'poweroff':
                             vm_power_off(vm)
                         elif op_name == 'poweron':
@@ -209,7 +218,7 @@ def execute_operations():
     print("=" * 70 + "\n")
 
     status = "error" if errors else "success"
-    message = f"Выполнено: {success_count}/{total_operations}"
+    message = f"Выполнено: {success_count} из {total_operations}"
     if errors:
         message += f", ошибок: {len(errors)}"
 

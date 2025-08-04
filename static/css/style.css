@@ -450,3 +450,41 @@ input[type="checkbox"]:indeterminate::after {
     border-color: #e74c3c;
     background-color: #ffeeed;
 }
+
+.revert-header {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.revert-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 5px;
+}
+
+.revert-name-container {
+    width: 100%;
+}
+
+.revert-name-input {
+    width: 100%;
+    padding: 4px 6px;
+    font-size: 12px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    box-sizing: border-box;
+    transition: border-color 0.3s;
+}
+
+.revert-name-input:focus {
+    border-color: #4a90e2;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
+}
+
+.revert-name-input.invalid {
+    border-color: #e74c3c;
+    background-color: #ffeeed;
+}

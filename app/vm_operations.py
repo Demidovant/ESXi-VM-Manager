@@ -92,19 +92,24 @@ def vm_power_off(vm, shutdown_timeout=60, poweroff_timeout=10):
                 while time.time() - start_time < shutdown_timeout:
                     if vm.runtime.powerState != vim.VirtualMachinePowerState.poweredOn:
                         print(f"[+] ВМ {vm.name} успешно выключена через graceful shutdown.")
+                        print("=" * 70)
                         return
                     time.sleep(2)
 
                 print(f"[!] ВМ {vm.name} не выключилась за {shutdown_timeout} сек")
+                print("=" * 70)
 
             except Exception as shutdown_error:
                 print(f"[!] Ошибка graceful shutdown: {str(shutdown_error)}")
+                print("=" * 70)
 
         else:
             print(f"[!] VMware Tools не работают (status: {tools_status})")
+            print("=" * 70)
 
     except Exception as tools_check_error:
         print(f"[!] Ошибка проверки VMware Tools: {str(tools_check_error)}")
+        print("=" * 70)
 
     # 4. Если graceful shutdown не сработал или Tools не доступны - выполняем power off
     print(f"[*] Выполняем принудительное выключение (power off)...")
