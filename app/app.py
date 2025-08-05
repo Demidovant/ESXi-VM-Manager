@@ -1,6 +1,7 @@
 import threading
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, Response
 import webview
+import uuid
 
 from esxi_connect import *
 from vm_operations import *
@@ -18,6 +19,7 @@ if csv_file:
 else:
     csv_file = os.path.join(BASE_DIR, 'vm.csv')
 
+active_sessions = {}
 
 app = Flask(__name__,
             template_folder=os.path.join(BASE_DIR, 'templates'),
@@ -50,195 +52,261 @@ def get_vms():
     return jsonify(vm_configs)
 
 
-@app.route('/api/cancel', methods=['POST'])
-def cancel_operations():
-    global operation_interrupted
-    operation_interrupted.set()
-    print("[!] Получен запрос на прерывание операций")
-    return jsonify({"status": "success", "message": "Запрос на прерывание принят"})
-
-
-@app.route('/api/execute', methods=['POST'])
-def execute_operations():
+@app.route('/api/start-operations', methods=['POST'])
+def start_operations():
     global operation_interrupted
     operation_interrupted.clear()
 
     data = request.json
     vm_operations = data.get('vmOperations', [])
-    success_count = 0
-    errors = []
-    operation_results = {}
-    vm_errors = {}  # Словарь для группировки ошибок по ВМ
-
-    total_operations = sum(len(vm['operations']) for vm in vm_operations)
-
-    print(f"\nНАЧАЛО ВЫПОЛНЕНИЯ ОПЕРАЦИЙ: {total_operations} операций для {len(vm_operations)} ВМ")
-    print("=" * 70)
 
     try:
-        vm_configs, groups = parse_vm_csv(csv_file)
+        vm_configs, _ = parse_vm_csv(csv_file)
         vm_config_map = {vm['TARGET_VM_NAME']: vm for vm in vm_configs}
-    except Exception as e:
-        error_msg = f"Не удалось загрузить конфигурацию ВМ: {str(e)}"
-        print(f"[X] КРИТИЧЕСКАЯ ОШИБКА: {error_msg}")
-        errors.append(error_msg)
+
+        # Подключаемся к ESXi один раз для всех операций
+        si = connect_to_host()
+        if si is None:
+            raise Exception("Не удалось подключиться к ESXi")
+
+        # Возвращаем идентификатор сессии
+        session_id = str(uuid.uuid4())
+        active_sessions[session_id] = {
+            'si': si,
+            'vm_config_map': vm_config_map,
+            'vm_operations': vm_operations,
+            'success_count': 0,
+            'errors': [],
+            'operation_results': {},
+            'vm_errors': {}
+        }
+
         return jsonify({
-            "status": "error",
-            "message": error_msg,
-            "success_count": 0,
-            "total_operations": total_operations,
-            "errors": errors,
-            "vmOperations": vm_operations
+            "status": "success",
+            "message": "Сессия операций создана",
+            "session_id": session_id
         })
 
-    si = connect_to_host()
-    if si is None:
-        error_msg = "Не удалось подключиться к ESXi"
-        print(f"[X] КРИТИЧЕСКАЯ ОШИБКА: {error_msg}")
-        errors.append(error_msg)
+    except Exception as e:
+        if 'si' in locals() and si:
+            disconnect_from_host(si)
         return jsonify({
             "status": "error",
-            "message": error_msg,
-            "success_count": 0,
-            "total_operations": total_operations,
-            "errors": errors,
-            "vmOperations": vm_operations
-        })
+            "message": str(e)
+        }), 500
+
+
+@app.route('/api/execute-operation', methods=['POST'])
+def execute_operation():
+    global operation_interrupted
+
+    data = request.json
+    session_id = data.get('session_id')
+    vm_name = data.get('vm_name')
+    operation = data.get('operation')
+    snapshot_name = data.get('snapshot_name')
+    revert_name = data.get('revert_name')
+
+    if not session_id or session_id not in active_sessions:
+        return jsonify({"status": "error", "message": "Недействительная сессия"}), 400
+
+    session = active_sessions[session_id]
+    operation_key = f"{vm_name}_{operation}"
 
     try:
-        for vm_data in vm_operations:
-            if operation_interrupted.is_set():
-                print("[!] Выполнение прервано пользователем")
-                errors.append("Выполнение прервано пользователем")
-                break
+        # Отправляем статус начала операции
+        session['operation_results'][operation_key] = 'active'
+        # print(json.dumps({"operation": operation_key, "status": "active"}))
 
+        # Проверяем подключение к хосту
+        if not session['si']:
+            raise Exception("Нет подключения к ESXi")
+
+        try:
+            if operation == 'clone':
+                vm_clone(session['si'], session['vm_config_map'].get(vm_name, {}))
+            else:
+                vm = get_vm_by_name(session['si'], vm_name)
+                if not vm:
+                    raise Exception(f"ВМ {vm_name} не найдена")
+
+                if operation == 'delete':
+                    vm_delete(vm)
+                elif operation == 'hardware':
+                    customize_vm_hardware(vm, session['vm_config_map'].get(vm_name, {}))
+                elif operation == 'customize':
+                    customize_vm_os(session['si'], vm, session['vm_config_map'].get(vm_name, {}))
+                elif operation == 'snapshot':
+                    config = session['vm_config_map'].get(vm_name, {}).copy()
+                    if snapshot_name:
+                        config['snapshot_name'] = snapshot_name
+                    create_snapshot(vm, config)
+                elif operation == 'revert':
+                    if not revert_name:
+                        raise Exception("Не указано имя снапшота для отката")
+                    revert_to_snapshot(vm, revert_name)
+                elif operation == 'poweroff':
+                    vm_power_off(vm)
+                elif operation == 'poweron':
+                    vm_power_on(vm)
+
+            session['success_count'] += 1
+            session['operation_results'][operation_key] = 'success'
+
+            return jsonify({
+                "status": "success",
+                "operation": operation_key,
+                "vm_name": vm_name
+            })
+
+
+        except Exception as op_error:
+            # Ошибка в конкретной операции
+            error_msg = f"Ошибка операции '{operation}' для {vm_name}: {str(op_error)}"
+            session['errors'].append(error_msg)
+            session['vm_errors'].setdefault(vm_name, []).append(error_msg)
+            session['operation_results'][operation_key] = 'error'  # Устанавливаем статус ошибки
+            return jsonify({
+                "status": "error",  # Явно указываем статус ошибки
+                "message": error_msg,
+                "operation": operation_key,
+                "vm_name": vm_name
+            })
+
+    except Exception as e:
+        # Критическая ошибка (только при подключении) - прерываем все
+        if "подключ" in str(e).lower() or "connect" in str(e).lower():
+            error_msg = f"Критическая ошибка подключения: {str(e)}"
+            session['errors'].append(error_msg)
+            session['operation_results'][operation_key] = 'error'
+            return jsonify({
+                "status": "critical_error",
+                "message": error_msg,
+                "operation": operation_key
+            }), 500
+        else:
+            # Все остальные ошибки считаем не критическими
+            error_msg = f"Ошибка: {str(e)}"
+            session['errors'].append(error_msg)
+            session['vm_errors'].setdefault(vm_name, []).append(error_msg)
+            session['operation_results'][operation_key] = 'error'
+            return jsonify({
+                "status": "success",
+                "message": error_msg,
+                "operation": operation_key,
+                "vm_name": vm_name
+            })
+
+
+@app.route('/api/finish-operations', methods=['POST'])
+def finish_operations():
+    global operation_interrupted
+
+    data = request.json
+    session_id = data.get('session_id')
+
+    if not session_id or session_id not in active_sessions:
+        return jsonify({"status": "error", "message": "Недействительная сессия"}), 400
+
+    session = active_sessions.pop(session_id)
+    si = session['si']
+
+    try:
+        # Формируем итоговый отчет
+        total_operations = sum(len(vm['operations']) for vm in session['vm_operations'])
+        success_count = session['success_count']
+        errors = session['errors']
+
+        print('.')
+        print('..')
+        print('...')
+        print('..')
+        print('.')
+
+        print("\n" + "=" * 70)
+        print("ИТОГОВЫЙ ОТЧЕТ О ВЫПОЛНЕНИИ ОПЕРАЦИЙ")
+        print("=" * 70)
+        print(f"Всего операций: {total_operations}")
+        print(f"Успешно выполнено: {success_count}")
+        print(f"Ошибок: {len(errors)}")
+        print("-" * 70)
+
+        # Выводим статистику по ВМ
+        for vm_data in session['vm_operations']:
             vm_name = vm_data['vm']
-            operations = vm_data['operations']
-            vm_config = vm_config_map.get(vm_name, {})
-            vm_errors[vm_name] = []  # Инициализируем список ошибок для ВМ
+            print("-" * 70)
+            print(f"\nВМ: {vm_name}")
+            print("-" * 50)
 
-            for op_name in operations:
+            for op_name in vm_data['operations']:
                 op_key = f"{vm_name}_{op_name}"
-                try:
-                    if operation_interrupted.is_set():
-                        error_msg = f"Прервана операция '{op_name}' для ВМ {vm_name}"
-                        errors.append(error_msg)
-                        vm_errors[vm_name].append(error_msg)
-                        operation_results[op_key] = 'error'
-                        break
+                status = session['operation_results'].get(op_key, 'unknown')
+                status_icon = "✓" if status == 'success' else "✗"
+                print(
+                    f"  {status_icon} Операция: {op_name.ljust(10)} - {'Успешно' if status == 'success' else 'Ошибка'}")
 
-                    print(f"[*] Выполнение операции '{op_name}' для ВМ {vm_name}")
+            if vm_name in session['vm_errors']:
+                print("\n  Ошибки:")
+                for error in session['vm_errors'][vm_name]:
+                    print(f"    • {error}")
 
-                    if op_name == 'clone':
-                        vm_clone(si, vm_config)
-                    else:
-                        vm = get_vm_by_name(si, vm_name)
-                        if not vm:
-                            error_msg = f"ВМ {vm_name} не найдена"
-                            errors.append(error_msg)
-                            vm_errors[vm_name].append(error_msg)
-                            operation_results[op_key] = 'error'
-                            continue
+        # Общие ошибки (если есть)
+        if errors:
+            print("\n" + "=" * 70)
+            print("СПИСОК ОШИБОК:")
+            for i, error in enumerate(errors, 1):
+                print(f"{i}. {error}")
 
-                        if op_name == 'delete':
-                            vm_delete(vm)
-                        elif op_name == 'hardware':
-                            customize_vm_hardware(vm, vm_config)
-                        elif op_name == 'customize':
-                            customize_vm_os(si, vm, vm_config)
-                        elif op_name == 'snapshot':
-                            vm_config = vm_config_map.get(vm_name, {}).copy()
-                            if 'snapshot_name' in vm_data:
-                                vm_config['snapshot_name'] = vm_data['snapshot_name']
-                            create_snapshot(vm, vm_config)
-                        elif op_name == 'revert':
-                            revert_name = vm_data.get('revert_name')
-                            if not revert_name:
-                                error_msg = f"Не указано имя снапшота для отката ВМ {vm_name}"
-                                errors.append(error_msg)
-                                vm_errors[vm_name].append(error_msg)
-                                operation_results[op_key] = 'error'
-                                continue
-                            revert_to_snapshot(vm, revert_name)
-                        elif op_name == 'poweroff':
-                            vm_power_off(vm)
-                        elif op_name == 'poweron':
-                            vm_power_on(vm)
+        print("\n" + "=" * 70)
+        print("ВЫПОЛНЕНИЕ ОПЕРАЦИЙ ЗАВЕРШЕНО")
+        print("=" * 70 + "\n")
 
-                    success_count += 1
-                    operation_results[op_key] = 'success'
+        status = "error" if errors else "success"
+        message = f"Выполнено: {success_count} из {total_operations}"
+        if errors:
+            message += f", ошибок: {len(errors)}"
 
-                except Exception as e:
-                    error_msg = f"Ошибка операции '{op_name}' для {vm_name}: {str(e)}"
-                    print(f"[X] {error_msg}")
-                    errors.append(error_msg)
-                    vm_errors[vm_name].append(error_msg)
-                    operation_results[op_key] = 'error'
+        return jsonify({
+            "status": status,
+            "message": message,
+            "success_count": success_count,
+            "total_operations": total_operations,
+            "errors": errors,
+            "vm_errors": session['vm_errors'],
+            "operationResults": session['operation_results']
+        })
 
     finally:
-        disconnect_from_host(si)
+        if si:
+            disconnect_from_host(si)
         operation_interrupted.clear()
 
-    # Формируем красивый итоговый отчет
-    print("\n" + "=" * 70)
-    print("ИТОГОВЫЙ ОТЧЕТ О ВЫПОЛНЕНИИ ОПЕРАЦИЙ")
-    print("=" * 70)
-    print(f"Всего операций: {total_operations}")
-    print(f"Успешно выполнено: {success_count}")
-    print(f"Ошибок: {len(errors)}")
-    print("-" * 70)
 
-    # Выводим статистику по ВМ
-    for vm_data in vm_operations:
-        vm_name = vm_data['vm']
-        print("-" * 70)
-        print(f"\nВМ: {vm_name}")
-        print("-" * 50)
+@app.route('/api/cancel-operations', methods=['POST'])
+def cancel_operations():
+    global operation_interrupted
+    operation_interrupted.set()
 
-        for op_name in vm_data['operations']:
-            op_key = f"{vm_name}_{op_name}"
-            status = operation_results.get(op_key, 'unknown')
-            status_icon = "✓" if status == 'success' else "✗"
-            print(f"  {status_icon} Операция: {op_name.ljust(10)} - {'Успешно' if status == 'success' else 'Ошибка'}")
+    data = request.json
+    session_id = data.get('session_id')
 
-        if vm_errors.get(vm_name):
-            print("\n  Ошибки:")
-            for error in vm_errors[vm_name]:
-                print(f"    • {error}")
-
-    # Общие ошибки (если есть)
-    if errors:
-        print("\n" + "=" * 70)
-        print("СПИСОК ОШИБОК:")
-        for i, error in enumerate(errors, 1):
-            print(f"{i}. {error}")
-
-    print("\n" + "=" * 70)
-    print("ВЫПОЛНЕНИЕ ОПЕРАЦИЙ ЗАВЕРШЕНО")
-    print("=" * 70 + "\n")
-
-    status = "error" if errors else "success"
-    message = f"Выполнено: {success_count} из {total_operations}"
-    if errors:
-        message += f", ошибок: {len(errors)}"
+    if session_id in active_sessions:
+        session = active_sessions.pop(session_id)
+        if session['si']:
+            disconnect_from_host(session['si'])
 
     return jsonify({
-        "status": status,
-        "message": message,
-        "success_count": success_count,
-        "total_operations": total_operations,
-        "errors": errors,
-        "vm_errors": vm_errors,  # Группировка ошибок по ВМ
-        "vmOperations": vm_operations,
-        "operationResults": operation_results,
-        "summary": {
-            "total": total_operations,
-            "success": success_count,
-            "failed": len(errors),
-            "vms_with_errors": [vm for vm, errs in vm_errors.items() if errs]
-        }
+        "status": "success",
+        "message": "Операции прерваны"
     })
 
+@app.route('/api/operation-updates')
+def operation_updates():
+    def generate():
+        # Здесь можно реализовать отправку обновлений через Server-Sent Events
+        # Но в нашем случае мы просто перенаправляем вывод print
+        pass
+    return Response(generate(), mimetype="text/event-stream")
 
 def start_flask():
     app.run(host='0.0.0.0', debug=False, port=5000)

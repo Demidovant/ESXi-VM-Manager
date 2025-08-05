@@ -46,24 +46,47 @@ export class VmTableManager {
 
 
     initSelectAllHandlers() {
+        // Функция для очистки всех стилей чекбоксов
+        const clearAllCheckboxStyles = () => {
+            document.querySelectorAll('.operation-checkbox, .header-checkbox').forEach(checkbox => {
+                checkbox.classList.remove(
+                    'operation-success',
+                    'operation-error',
+                    'operation-active'
+                );
+            });
+        };
+
         OPERATIONS.forEach(operation => {
             const headerCheckbox = document.getElementById(`select-all-${operation}`);
             if (headerCheckbox) {
+                // Обработчик для чекбокса в заголовке
                 headerCheckbox.addEventListener('change', function() {
                     const isChecked = this.checked;
                     document.querySelectorAll(`.operation-checkbox[data-operation="${operation}"]`).forEach(cb => {
                         cb.checked = isChecked;
                     });
                     this.indeterminate = false;
+                    clearAllCheckboxStyles(); // Очищаем все стили
                 });
 
+                // Обработчики для чекбоксов операций
                 document.querySelectorAll(`.operation-checkbox[data-operation="${operation}"]`).forEach(checkbox => {
                     checkbox.addEventListener('change', () => {
                         this.updateHeaderCheckboxState(operation);
+                        clearAllCheckboxStyles(); // Очищаем все стили
                     });
                 });
 
                 this.updateHeaderCheckboxState(operation);
+            }
+        });
+
+        // Добавляем обработчик клика на всю таблицу для очистки стилей
+        document.querySelector('#vm-table').addEventListener('click', (e) => {
+            if (e.target.classList.contains('operation-checkbox') ||
+                e.target.classList.contains('header-checkbox')) {
+                clearAllCheckboxStyles();
             }
         });
     }
@@ -99,6 +122,11 @@ export class VmTableManager {
     clearSelection() {
         document.querySelectorAll('.operation-checkbox').forEach(checkbox => {
             checkbox.checked = false;
+            checkbox.classList.remove(
+                SELECTORS.operationSuccess,
+                SELECTORS.operationError,
+                SELECTORS.operationActive
+            );
         });
         OPERATIONS.forEach(op => {
             const headerCheckbox = document.getElementById(`select-all-${op}`);

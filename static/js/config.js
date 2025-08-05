@@ -19,4 +19,8 @@ export const SELECTORS = {
     snapshotNameInput: '#snapshot-name-input',
     revertNameInput: '#revert-name-input',
     selectAllRevert: '#select-all-revert',
+    operationCheckbox: '.operation-checkbox',
+    operationSuccess: 'operation-success',
+    operationError: 'operation-error',
+    operationActive: 'operation-active',
 };

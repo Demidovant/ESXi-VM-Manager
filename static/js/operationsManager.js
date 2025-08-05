@@ -4,13 +4,59 @@ export class OperationsManager {
     constructor(vmTableManager) {
         this.vmTableManager = vmTableManager;
         this.abortController = null;
+        this.currentOperation = null;
         this.initEventListeners();
+        this.setupOperationUpdates();
+    }
+
+    resetOperationStatus() {
+        document.querySelectorAll(SELECTORS.operationCheckbox).forEach(checkbox => {
+            checkbox.classList.remove(
+                SELECTORS.operationSuccess,
+                SELECTORS.operationError,
+                SELECTORS.operationActive
+            );
+        });
+    }
+
+    updateOperationStatus(vmName, operation, status) {
+        const checkbox = document.querySelector(
+            `tr[data-vm="${vmName}"] .operation-checkbox[data-operation="${operation}"]`
+        );
+
+        if (checkbox) {
+            checkbox.classList.remove(
+                SELECTORS.operationSuccess,
+                SELECTORS.operationError,
+                SELECTORS.operationActive
+            );
+
+            if (status === 'success') {
+                checkbox.classList.add(SELECTORS.operationSuccess);
+            } else if (status === 'error') {
+                checkbox.classList.add(SELECTORS.operationError);
+            } else if (status === 'active') {
+                checkbox.classList.add(SELECTORS.operationActive);
+            }
+        }
     }
 
     initEventListeners() {
         document.querySelector(SELECTORS.executeBtn).addEventListener('click', () => this.executeOperations());
         document.querySelector(SELECTORS.cancelBtn).addEventListener('click', () => this.cancelOperations());
         document.querySelector(SELECTORS.clearFilterBtn).addEventListener('click', () => this.clearSelection());
+
+        // Сброс статусов при изменении чекбоксов
+        document.addEventListener('change', (e) => {
+            if (e.target.matches(SELECTORS.operationCheckbox)) {
+                this.resetOperationStatus();
+            }
+        });
+
+        // Сброс статусов при очистке таблицы
+        document.querySelector(SELECTORS.clearFilterBtn).addEventListener('click', () => {
+            this.resetOperationStatus();
+        });
     }
 
     lockCheckboxes() {
@@ -67,8 +113,9 @@ export class OperationsManager {
 
     async executeOperations() {
         const { vmOperations, allOperations } = this.vmTableManager.getSelectedOperations();
+        this.resetOperationStatus();
 
-            // Проверка имени снапшота, если есть операции снапшота
+        // Проверка имени снапшота
         if (Array.from(allOperations).includes('snapshot')) {
             const snapshotNameInput = document.querySelector(SELECTORS.snapshotNameInput);
             const snapshotName = snapshotNameInput.value.trim();
@@ -78,7 +125,6 @@ export class OperationsManager {
                 return;
             }
 
-            // Добавляем имя снапшота в данные операций
             vmOperations.forEach(vm => {
                 if (vm.operations.includes('snapshot')) {
                     vm.snapshot_name = snapshotName;
@@ -86,7 +132,7 @@ export class OperationsManager {
             });
         }
 
-                // Проверка имени снапшота для отката
+        // Проверка имени снапшота для отката
         if (Array.from(allOperations).includes('revert')) {
             const revertNameInput = document.querySelector(SELECTORS.revertNameInput);
             const revertName = revertNameInput.value.trim();
@@ -138,27 +184,105 @@ export class OperationsManager {
         // Блокируем чекбоксы перед началом операций
         this.lockCheckboxes();
 
+        let sessionId = null;
+
         try {
-            const response = await fetch('/api/execute', {
+            // 1. Начинаем сессию операций
+            const startResponse = await fetch('/api/start-operations', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ vmOperations }),
                 signal: this.abortController.signal
             });
 
-            if (!response.ok) throw new Error('Ошибка сервера');
+            if (!startResponse.ok) throw new Error('Ошибка начала операций');
 
-            const data = await response.json();
-            let message = `${data.message}`;
-            // let message = `${data.message}\nУспешно: ${data.success_count}/${data.total_operations}`;
-            // if (data.errors?.length > 0) {
-            //     message += `\nОшибки: ${data.errors.length}`;
+            const startData = await startResponse.json();
+            sessionId = startData.session_id;
+
+            // 2. Выполняем операции последовательно
+            for (const vm of vmOperations) {
+                if (this.abortController.signal.aborted) break;
+
+                for (const op of vm.operations) {
+                    if (this.abortController.signal.aborted) break;
+
+                    // Подсвечиваем текущую операцию
+                    this.updateOperationStatus(vm.vm, op, 'active');
+                    this.currentOperation = { vmName: vm.vm, operation: op };
+
+                    try {
+                        const opResponse = await fetch('/api/execute-operation', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({
+                                session_id: sessionId,
+                                vm_name: vm.vm,
+                                operation: op,
+                                snapshot_name: vm.snapshot_name,
+                                revert_name: vm.revert_name
+                            }),
+                            signal: this.abortController.signal
+                        });
+
+                    const opData = await opResponse.json();
+
+                    // Правильно определяем статус операции
+                    const opStatus = opData.status === "error" ? 'error' : 'success';
+                    this.updateOperationStatus(vm.vm, op, opStatus);
+
+                    if (opData.status === "critical_error") {
+                        throw new Error(opData.message);
+                    }
+
+                    if (opStatus === 'error') {
+                        console.error(opData.message);
+                    }
+
+                } catch (error) {
+                    this.updateOperationStatus(vm.vm, op, 'error');
+
+                    if (error.message.toLowerCase().includes("подключ") ||
+                        error.message.toLowerCase().includes("connect")) {
+                        throw error;
+                    }
+
+                    console.error(error.message);
+                    continue;
+
+                    } finally {
+                        this.currentOperation = null;
+                    }
+                }
+            }
+
+            // 3. Завершаем сессию и получаем итоговый отчет
+            const finishResponse = await fetch('/api/finish-operations', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ session_id: sessionId })
+            });
+
+            if (!finishResponse.ok) throw new Error('Ошибка завершения операций');
+
+            const finishData = await finishResponse.json();
+            let message = finishData.message;
+            // if (finishData.errors?.length > 0) {
+            //     message += ` (ошибок: ${finishData.errors.length})`;
             // }
-            this.showMessage(message, data.status === "error");
+            this.showMessage(message, finishData.status === "error");
 
         } catch (error) {
+            if (sessionId) {
+                // При ошибке отменяем сессию
+                await fetch('/api/cancel-operations', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ session_id: sessionId })
+                });
+            }
+
             if (error.name === 'AbortError') {
-                await fetch('/api/cancel', { method: 'POST' });
                 this.showMessage('Выполнение операций прервано', true);
             } else {
                 console.error('Ошибка:', error);
@@ -170,7 +294,7 @@ export class OperationsManager {
             selectBox.disabled = false;
             cancelBtn.disabled = true;
             this.abortController = null;
-
+            this.currentOperation = null;
             // Разблокируем чекбоксы после завершения операций
             this.unlockCheckboxes();
         }
@@ -202,4 +326,16 @@ export class OperationsManager {
             message.addEventListener('animationend', () => message.remove());
         }, 5000);
     }
+
+    setupOperationUpdates() {
+        const eventSource = new EventSource('/api/operation-updates');
+        eventSource.onmessage = (e) => {
+            const data = JSON.parse(e.data);
+            if (data.operation && data.status) {
+                const [vmName, opName] = data.operation.split('_');
+                this.updateOperationStatus(vmName, opName, data.status);
+            }
+        };
+    }
+
 }

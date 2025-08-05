@@ -375,6 +375,7 @@ input[type="checkbox"] {
     display: block;
     position: relative;
     z-index: 1;
+    transition: all 0.3s;
 }
 
 .column-header input[type="checkbox"] {
@@ -487,4 +488,27 @@ input[type="checkbox"]:indeterminate::after {
 .revert-name-input.invalid {
     border-color: #e74c3c;
     background-color: #ffeeed;
+}
+
+.operation-checkbox.operation-success {
+    box-shadow: 0 0 0 2px #28a745;
+}
+
+.operation-checkbox.operation-error {
+    box-shadow: 0 0 0 2px #dc3545;
+
+}
+
+.operation-checkbox.operation-active {
+    animation: pulse 1s infinite;
+    box-shadow: 0 0 0 2px #ffc107;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.8);
+    }
+    50% {
+        box-shadow: 0 0 0 12px rgba(255, 193, 7, 0.2);
+    }
 }
