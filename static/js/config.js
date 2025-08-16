@@ -1,5 +1,5 @@
 // Константы для операций
-export const OPERATIONS = ['delete', 'clone', 'hardware', 'customize', 'snapshot', 'revert', 'poweroff', 'poweron'];
+export const OPERATIONS = ['delete', 'clone', 'customize', 'hardware', 'snapshot', 'revert', 'poweroff', 'poweron'];
 export const COLUMN_COUNT = OPERATIONS.length + 2; // +2 для group-col и vm-col
 
 // Селекторы элементов

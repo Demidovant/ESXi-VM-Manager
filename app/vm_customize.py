@@ -251,22 +251,27 @@ def customize_ubuntu_debian(vm, static_ip, netmask, gateway, dns, username, pass
     cmd = f"-c 'echo \"{password}\" | sudo -S sh -c \"rm -f /etc/netplan/*\"'"
     _execute_guest_command(vm, "/bin/bash", cmd, username, password, service_instance)
 
+    # Отключаем cloud-init управление сетью
+    print("[*] Отключаем cloud-init управление сетью...")
+    cmd = f"-c 'echo \"{password}\" | sudo -S sh -c \"echo \\\"network: {{config: disabled}}\\\" > /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg\"'"
+    _execute_guest_command(vm, "/bin/bash", cmd, username, password, service_instance)
+
     # Экранируем кавычки и новые строки для bash
     yaml_content_escaped = yaml_content.replace("'", "'\"'\"'").replace("\n", "\\n")
 
     print("[*] Записываем netplan конфиг...")
-    cmd = f"-c 'echo \"{password}\" | sudo -S sh -c \"printf \\\"{yaml_content_escaped}\\\" > /etc/netplan/50-cloud-init.yaml\"'"
+    cmd = f"-c 'echo \"{password}\" | sudo -S sh -c \"printf \\\"{yaml_content_escaped}\\\" > /etc/netplan/01-netcfg.yaml\"'"
     _execute_guest_command(vm, "/bin/bash", cmd, username, password, service_instance)
 
     # Применение конфига
     print("[*] Применяем Netplan...")
-    cmd = f"-c 'echo \"{password}\" | sudo -S netplan apply'"
+    cmd = f"-c 'echo \"{password}\" | sudo -S netplan apply && sudo -S shutdown now'"
     _execute_guest_command(vm, "/bin/bash", cmd, username, password, service_instance)
 
-    # Перезапуск networking (для надежности)
-    print("[*] Перезапускаем networking сервис...")
-    cmd = f"-c 'echo \"{password}\" | sudo -S systemctl restart systemd-networkd'"
-    _execute_guest_command(vm, "/bin/bash", cmd, username, password, service_instance)
+    # # Перезапуск networking (для надежности)
+    # print("[*] Перезапускаем networking сервис...")
+    # cmd = f"-c 'echo \"{password}\" | sudo -S systemctl restart systemd-networkd'"
+    # _execute_guest_command(vm, "/bin/bash", cmd, username, password, service_instance)
 
     print("[+] Настройка сети завершена")
     print("[+] Настройка Ubuntu/Debian завершена")

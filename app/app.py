@@ -132,10 +132,10 @@ def execute_operation():
 
                 if operation == 'delete':
                     vm_delete(vm)
-                elif operation == 'hardware':
-                    customize_vm_hardware(vm, session['vm_config_map'].get(vm_name, {}))
                 elif operation == 'customize':
                     customize_vm_os(session['si'], vm, session['vm_config_map'].get(vm_name, {}))
+                elif operation == 'hardware':
+                    customize_vm_hardware(vm, session['vm_config_map'].get(vm_name, {}))
                 elif operation == 'snapshot':
                     config = session['vm_config_map'].get(vm_name, {}).copy()
                     if snapshot_name:
