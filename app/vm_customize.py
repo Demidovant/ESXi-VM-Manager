@@ -407,7 +407,10 @@ def customize_vm_hardware(vm, vm_config):
         # Создаем спецификацию новой конфигурации
         config_spec = vim.vm.ConfigSpec(
             numCPUs=cpu_count,
-            memoryMB=memory_mb
+            memoryMB=memory_mb,
+            numCoresPerSocket=cpu_count,  # Все ядра в одном сокете
+            cpuHotAddEnabled=True,  # Включение HotAdd CPU
+            memoryHotAddEnabled=True  # Включение HotAdd RAM
         )
 
         # Если указано сетевое имя - меняем сетевую карту
