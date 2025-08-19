@@ -176,19 +176,22 @@ def customize_windows(vm, static_ip, netmask, gateway, dns, username, password, 
     # Настройка сети
     $adapter = Get-NetAdapter | Where-Object {{ $_.Status -eq 'Up' }}
     Write-host $adapter.ifIndex
-    
+        
     if ($adapter) {{
         Set-NetIPInterface -InterfaceIndex $adapter.ifIndex -Dhcp Disabled
         
         # Очистка старых IP
         Get-NetIPAddress -InterfaceIndex $adapter.ifIndex -ErrorAction SilentlyContinue | Remove-NetIPAddress -Confirm:$false -ErrorAction SilentlyContinue
+        
         # Очистка шлюза
         Remove-NetRoute -InterfaceIndex $adapter.ifIndex -DestinationPrefix "0.0.0.0/0" -Confirm:$false -ErrorAction SilentlyContinue
+        
         # Сброс всех DNS-серверов
         Set-DnsClientServerAddress -InterfaceIndex $adapter.ifIndex -ResetServerAddresses
-
+        
         # Установка нового IP и шлюза
         New-NetIPAddress -InterfaceIndex $adapter.ifIndex -IPAddress {static_ip} -PrefixLength {netmask} -DefaultGateway {gateway}
+        
         # Настройка DNS
         Set-DnsClientServerAddress -InterfaceIndex $adapter.ifIndex -ServerAddresses '{dns}'
     }}
@@ -196,6 +199,7 @@ def customize_windows(vm, static_ip, netmask, gateway, dns, username, password, 
     # Настройка hostname
     Rename-Computer -NewName '{hostname}' -Force -PassThru
     """
+
 
     try:
         _execute_guest_command(
@@ -209,6 +213,7 @@ def customize_windows(vm, static_ip, netmask, gateway, dns, username, password, 
     except Exception as e:
         print(f"[X] Ошибка: {e}")
 
+    time.sleep(10)
     print("[+] Настройка Windows завершена")
 
 
