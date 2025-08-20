@@ -244,9 +244,10 @@ def vm_clone(si, vm_config):
         raise Exception(f"Ошибка клонирования: {error}")
 
     print(f"[+] ВМ '{target_vm_name}' успешно клонирована")
+    print("=" * 70)
+
     return task.info.result
 
-    print("=" * 70)
 
 
 def vm_delete(vm):
