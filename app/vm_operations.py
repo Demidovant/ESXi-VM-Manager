@@ -179,7 +179,11 @@ def vm_clone(si, vm_config):
 
     # Откатываем к снапшоту
     from vm_snapshot import revert_to_snapshot
-    revert_to_snapshot(source_vm, source_snapshot_name)
+    try:
+        revert_to_snapshot(source_vm, source_snapshot_name)
+    except Exception as e:
+        print(f"[i] Снапшот {source_snapshot_name} не найден. {e}")
+        print("[i] Продолжаем клонирование ВМ из текущего состояния")
 
     # Отключаем все DVD-приводы
     config_spec = vim.vm.ConfigSpec()
