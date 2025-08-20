@@ -236,7 +236,7 @@ def finish_operations():
             vm_name = vm_data['vm']
             print("-" * 70)
             print(f"\nВМ: {vm_name}")
-            print("-" * 50)
+            print("-" * 70)
 
             for op_name in vm_data['operations']:
                 op_key = f"{vm_name}_{op_name}"
