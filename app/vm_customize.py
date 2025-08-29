@@ -56,6 +56,8 @@ def customize_vm_os(service_instance, vm, vm_config):
     else:
         print(f"[!] Настройка для ОС {os_type} не реализована")
 
+    print("[*] Пауза 10 секунд...")
+    time.sleep(10)
     print("=" * 70)
 
 
@@ -236,20 +238,24 @@ def customize_ubuntu_debian(vm, static_ip, netmask, gateway, dns, username, pass
 
     print("[+] Настройка hostname завершена")
 
+    print("[*] Определяем сетевой интерфейс...")
+    cmd = r"ip -o link show | grep -E '^[0-9]+: (ens|eth)' | head -n1 | cut -d':' -f2 | tr -d ' ' > /tmp/iface"
+    _execute_guest_command(vm, "/bin/bash", f'-c "{cmd}"', username, password, service_instance)
+
     yaml_content = f"""network:
-        ethernets:
-            ens33:
+    ethernets:
+        INTERFACE_PLACEHOLDER:
+            addresses:
+            - {static_ip}/{netmask}
+            nameservers:
                 addresses:
-                - {static_ip}/{netmask}
-                nameservers:
-                    addresses:
-                    - {dns}
-                    search: []
-                routes:
-                -   to: default
-                    via: {gateway}
-        version: 2
-    """
+                - {dns}
+                search: []
+            routes:
+            -   to: default
+                via: {gateway}
+    version: 2
+"""
 
     # Очистка старых конфигов netplan
     print("[*] Удаляем старые конфиги Netplan...")
@@ -268,19 +274,25 @@ def customize_ubuntu_debian(vm, static_ip, netmask, gateway, dns, username, pass
     cmd = f"-c 'echo \"{password}\" | sudo -S sh -c \"printf \\\"{yaml_content_escaped}\\\" > /etc/netplan/01-netcfg.yaml\"'"
     _execute_guest_command(vm, "/bin/bash", cmd, username, password, service_instance)
 
+    print("[*] Заменяем INTERFACE_PLACEHOLDER в YAML на найденный интерфейс...")
+    cmd = "sudo sed -i \"s/INTERFACE_PLACEHOLDER/$(cat /tmp/iface | sed 's/[\\/&]/\\\\&/g' | tr -d '\\n')/g\" /etc/netplan/01-netcfg.yaml"
+    _execute_guest_command(vm, "/bin/bash", f'-c "{cmd}"', username, password, service_instance)
+
+    print("[*] Устанавливаем владельца root:root...")
+    cmd = f"-c 'echo \"{password}\" | sudo -S chown root:root /etc/netplan/01-netcfg.yaml'"
+    _execute_guest_command(vm, "/bin/bash", cmd, username, password, service_instance)
+
+    print("[*] Выставляем права 644...")
+    cmd = f"-c 'echo \"{password}\" | sudo -S chmod 600 /etc/netplan/01-netcfg.yaml'"
+    _execute_guest_command(vm, "/bin/bash", cmd, username, password, service_instance)
+
     # Применение конфига
     print("[*] Применяем Netplan...")
     cmd = f"-c 'echo \"{password}\" | sudo -S netplan apply && sudo -S shutdown now'"
     _execute_guest_command(vm, "/bin/bash", cmd, username, password, service_instance)
 
-    # # Перезапуск networking (для надежности)
-    # print("[*] Перезапускаем networking сервис...")
-    # cmd = f"-c 'echo \"{password}\" | sudo -S systemctl restart systemd-networkd'"
-    # _execute_guest_command(vm, "/bin/bash", cmd, username, password, service_instance)
-
     print("[+] Настройка сети завершена")
     print("[+] Настройка Ubuntu/Debian завершена")
-
 
 
 def customize_centos(vm, static_ip, netmask, gateway, dns, username, password, hostname):
