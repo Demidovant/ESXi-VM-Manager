@@ -1,0 +1,6 @@
+﻿groupName;vmName;vmHostname;ip;ipDns;ipGateway;netmask;MemoryMB;cpuCount;adaptersLan;targetDatastore;sourceVM;osUserName;osUserPassword;sourceSnapshotName;targetSnapshotName;targetSnapshotDescription
+test-1;test-vm-01;test-vm-01-hostname;192.168.1.72;192.168.1.1;192.168.1.1;24;1024;2;Internal;ssd512;source-vm-name;user;123456;clean;clean-lan-configured;Настроена сеть и hostname
+test-2;test-vm-02;test-vm-02-hostname;192.168.1.73;8.8.8.8;192.168.1.1;24;2048;4;Internal;ssd512;source-vm-name;user;123456;clean;clean-lan-configured;Настроена сеть и hostname
+test-3;test-vm-03;test-vm-03-hostname;192.168.1.74;1.1.1.1;192.168.1.1;24;4096;8;Internal;ssd512;source-vm-name;user;123456;clean;clean-lan-configured;Настроена сеть и hostname
+test-3;test-vm-04;test-vm-04-hostname;192.168.1.75;192.168.1.1;192.168.1.1;24;4096;8;Internal;ssd512;source-vm-name;user;123456;clean;clean-lan-configured;Настроена сеть и hostname
+;test-vm-05;test-vm-05-hostname;192.168.1.76;192.168.1.1;192.168.1.1;24;4096;8;Internal;ssd512;source-vm-name;user;123456;clean;clean-lan-configured;Настроена сеть и hostname
