@@ -1,7 +1,14 @@
+# Для сборки exe
+# pyinstaller --clean --onefile --noconsole --name ESXi_VM_Manager --paths app --add-data "static;static" --add-data "templates;templates" --hidden-import=flask --hidden-import=webview --hidden-import=pyVim --hidden-import=pyVmomi --hidden-import=dotenv --icon static/img/icon.ico app/app.py
+
+
 import threading
 from flask import Flask, render_template, jsonify, request, Response
 import webview
 import uuid
+
+import sys, os
+sys.path.append(os.path.dirname(__file__))
 
 from esxi_connect import *
 from vm_operations import *
@@ -12,18 +19,66 @@ from logger_ws import *
 from system_tray import *
 from utils import *
 
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-csv_file = os.getenv('CSV_FILE', False)
-if csv_file:
-    csv_file = os.path.join(BASE_DIR, csv_file)
+# Определяем базовую директорию
+if getattr(sys, 'frozen', False):
+    # exe запущен
+    BASE_DIR = os.path.dirname(sys.executable)  # рядом с exe
 else:
-    csv_file = os.path.join(BASE_DIR, 'vm.csv')
+    BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+
+print(f"Базовая директория: {BASE_DIR}")
+
+
+# Функция для поиска файлов рядом с exe
+def find_file_near_exe(filename, default_name=None):
+    """
+    Ищет файл в директории с exe
+    """
+    file_path = os.path.join(BASE_DIR, filename)
+    if os.path.exists(file_path):
+        return file_path
+
+    # Если файл не найден и указано default имя
+    if default_name:
+        default_path = os.path.join(BASE_DIR, default_name)
+        if os.path.exists(default_path):
+            return default_path
+
+    # Если файл не существует, возвращаем путь для создания
+    return os.path.join(BASE_DIR, default_name or filename)
+
+
+# Загрузка .env файла
+env_file_name = os.getenv('ENV_FILE', '.env')
+env_file_path = find_file_near_exe(env_file_name, '.env')
+
+print(f"Путь к env файлу: {env_file_path}")
+
+# Загружаем .env если он существует
+if os.path.exists(env_file_path):
+    from dotenv import load_dotenv
+
+    load_dotenv(env_file_path)
+    print(f"Успешно загружены переменные из {env_file_path}")
+else:
+    print(f"Env файл {env_file_path} не найден, используем переменные окружения системы")
+
+# Загрузка CSV файла
+csv_file_env = os.getenv('CSV_FILE', 'vm.csv')
+csv_file = find_file_near_exe(csv_file_env, 'vm.csv')
+
+print(f"Путь к CSV файлу: {csv_file}")
+
+# Проверяем существование CSV файла
+if not os.path.exists(csv_file):
+    print(f"ВНИМАНИЕ: CSV файл {csv_file} не найден!")
+    print("Создайте файл vm.csv рядом с исполняемым файлом")
 
 active_sessions = {}
 
 app = Flask(__name__,
-            template_folder=os.path.join(BASE_DIR, 'templates'),
-            static_folder=os.path.join(BASE_DIR, 'static'))
+            template_folder = os.path.join(getattr(sys, '_MEIPASS', BASE_DIR), 'templates'),
+            static_folder = os.path.join(getattr(sys, '_MEIPASS', BASE_DIR), 'static'))
 operation_interrupted = threading.Event()
 sock = init_log_socket(app)
 

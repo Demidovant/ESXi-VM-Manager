@@ -1,26 +1,33 @@
 import os
+import sys
 import pystray
 from PIL import Image
 
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-STATIC_DIR = os.path.join(BASE_DIR, 'static')
+def resource_path(relative_path):
+    """Возвращает путь к ресурсу, корректно для exe"""
+    try:
+        # PyInstaller создаёт временную папку _MEIPASS
+        base_path = sys._MEIPASS
+    except AttributeError:
+        base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+    return os.path.join(base_path, relative_path)
 
 
 class AppTray:
     def __init__(self, window):
         self.window = window
         self.icon = None
-        self.setup_tray()
         self.is_app_hidden = False
+        self.setup_tray()
 
     def create_image(self):
         """Загружаем изображение из файла для иконки в трее."""
 
         dark_logo = os.getenv('DARK_LOGO', 'false').lower()
         if dark_logo in ['true', '1']:
-            icon_path = os.path.join(STATIC_DIR, 'img', 'dark_icon.png')
+            icon_path = resource_path(os.path.join('static', 'img', 'dark_icon.png'))
         else:
-            icon_path = os.path.join(STATIC_DIR, 'img', 'icon.png')
+            icon_path = resource_path(os.path.join('static', 'img', 'icon.png'))
 
         try:
             image = Image.open(icon_path)
@@ -41,25 +48,17 @@ class AppTray:
     def on_click(self, item):
         """Обработчик пункта меню 'Открыть' и действия по умолчанию"""
         if self.is_app_hidden:
-            # self.window.restore()
             self.window.show()
-            # self.window.maximize()
             self.is_app_hidden = False
         else:
             self.window.hide()
             self.is_app_hidden = True
 
-    def on_hide(self, item):
-        """Обработчик пункта меню 'Свернуть в трей'"""
-        self.window.hide()
-        self.is_app_hidden = True
-
     def setup_tray(self):
         """Настройка иконки в системном трее"""
         image = self.create_image()
         menu = pystray.Menu(
-            pystray.MenuItem('Свернуть в трей / Развернуть', self.on_click, default=True),
-            # pystray.MenuItem('Свернуть в трей', self.on_hide),
+            pystray.MenuItem('Свернуть / Развернуть', self.on_click, default=True),
             pystray.MenuItem('Закрыть', self.on_quit)
         )
 
@@ -67,7 +66,6 @@ class AppTray:
 
         def setup_icon(icon):
             icon.visible = True
-
             hide_on_startup_env = os.getenv('HIDE_ON_STARTUP', 'false').lower()
             if hide_on_startup_env in ['true', '1']:
                 self.window.hide()
