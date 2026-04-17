@@ -245,15 +245,15 @@ def customize_ubuntu_debian(vm, static_ip, netmask, gateway, dns, username, pass
     yaml_content = f"""network:
     ethernets:
         INTERFACE_PLACEHOLDER:
-            addresses:
+        addresses:
             - {static_ip}/{netmask}
-            nameservers:
-                addresses:
+        nameservers:
+            addresses:
                 - {dns}
-                search: []
+            search: []
             routes:
-            -   to: default
-                via: {gateway}
+                - to: default
+            via: {gateway}
     version: 2
 """
 
