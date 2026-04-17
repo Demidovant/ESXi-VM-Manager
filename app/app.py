@@ -19,6 +19,9 @@ from logger_ws import *
 from system_tray import *
 from utils import *
 
+import platform
+import subprocess
+
 # Определяем базовую директорию
 if getattr(sys, 'frozen', False):
     # exe запущен
@@ -365,6 +368,27 @@ def operation_updates():
         # Но в нашем случае мы просто перенаправляем вывод print
         pass
     return Response(generate(), mimetype="text/event-stream")
+
+@app.route('/api/open-csv', methods=['POST'])
+def open_csv():
+    try:
+        if not os.path.exists(csv_file):
+            return jsonify({"status": "error", "message": f"Файл не найден: {csv_file}"}), 404
+
+        print(f"[*] Открываем файл: {csv_file}")
+
+        if platform.system() == "Windows":
+            os.startfile(csv_file)
+        elif platform.system() == "Darwin":
+            subprocess.run(['open', csv_file])
+        else:
+            subprocess.run(['xdg-open', csv_file])
+
+        return jsonify({"status": "success", "message": "Файл открыт"})
+
+    except Exception as e:
+        print(f"[X] Ошибка открытия CSV: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 def start_flask():
     app.run(host='0.0.0.0', debug=False, port=5000)

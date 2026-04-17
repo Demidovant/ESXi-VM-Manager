@@ -7,6 +7,7 @@ export class OperationsManager {
         this.currentOperation = null;
         this.initEventListeners();
         this.setupOperationUpdates();
+        this.initOpenCsvButton();
     }
 
     resetOperationStatus() {
@@ -336,6 +337,35 @@ export class OperationsManager {
                 this.updateOperationStatus(vmName, opName, data.status);
             }
         };
+    }
+
+
+    initOpenCsvButton() {
+        const openCsvBtn = document.getElementById('open-csv-btn');
+        if (!openCsvBtn) {
+            console.warn('Кнопка #open-csv-btn не найдена в DOM');
+            return;
+        }
+
+        openCsvBtn.addEventListener('click', async () => {
+            try {
+                const response = await fetch('/api/open-csv', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    this.showMessage('Файл vm.csv открыт в редакторе по умолчанию', false);
+                } else {
+                    this.showMessage(data.message || 'Не удалось открыть файл CSV', true);
+                }
+            } catch (error) {
+                console.error('Ошибка открытия CSV:', error);
+                this.showMessage('Ошибка соединения при попытке открыть файл', true);
+            }
+        });
     }
 
 }
