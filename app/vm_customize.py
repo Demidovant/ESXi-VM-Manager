@@ -369,7 +369,7 @@ def _execute_guest_command(vm, program_path, arguments, username, password, serv
         if not pid:
             raise Exception("Команда вернула пустой PID (ошибка запуска)")
 
-        print(f"[✓] Команда успешно запущена, PID: {pid}")
+        print(f"[ОК] Команда успешно запущена, PID: {pid}")
 
         return pid
 

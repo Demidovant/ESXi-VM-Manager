@@ -1,5 +1,5 @@
 # Для сборки exe
-# pyinstaller --clean --onefile --noconsole --name ESXi_VM_Manager --paths app --add-data "static;static" --add-data "templates;templates" --hidden-import=flask --hidden-import=webview --hidden-import=pyVim --hidden-import=pyVmomi --hidden-import=dotenv --icon static/img/icon.ico app/app.py
+# pyinstaller --clean --onefile --noconsole --name ESXi_VM_Manager --paths app --add-data "static;static" --add-data "templates;templates" --hidden-import=flask --hidden-import=webview --hidden-import=pyVim --hidden-import=pyVmomi --hidden-import=dotenv --hidden-import=queue --hidden-import=wsproto --hidden-import=simple_websocket --icon static/img/icon.ico app/app.py
 
 
 import threading
@@ -83,7 +83,10 @@ operation_interrupted = threading.Event()
 sock = init_log_socket(app)
 
 # Глобальный перехватчик лога
-sys.stdout = PrintCapture()
+try:
+    sys.stdout = PrintCapture()
+except Exception as e:
+    print(f"Warning: PrintCapture не установлен: {e}", file=sys.stderr)
 
 def on_window_minimized():
     app_tray.is_app_hidden = True
