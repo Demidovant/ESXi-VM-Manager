@@ -519,7 +519,7 @@ input[type="checkbox"]:indeterminate::after {
     background: #ffbb66;           /* Приятный бледный оранжевый */
     color: #333;                   /* Тёмный текст — лучше читается на светлом фоне */
     border: 1px solid #ffaa44;
-    padding: 10px 20px;
+    padding: 10px 10px;
     border-radius: 6px;
     cursor: pointer;
     font-size: 16px;
@@ -528,8 +528,7 @@ input[type="checkbox"]:indeterminate::after {
     margin-left: 25px;
     display: flex;
     align-items: center;
-    gap: 8px;
-    white-space: nowrap;
+    gap: 5px;
     box-shadow: 0 2px 6px rgba(255, 170, 68, 0.25);
 }
 
@@ -554,7 +553,7 @@ input[type="checkbox"]:indeterminate::after {
     background: #ffbb66; /* Приятный бледный оранжевый */
     color: #333; /* Тёмный текст — лучше читается на светлом фоне */
     border: 1px solid #ffaa44;
-    padding: 10px 20px;
+    padding: 10px 10px;
     border-radius: 6px;
     cursor: pointer;
     font-size: 16px;
@@ -563,12 +562,16 @@ input[type="checkbox"]:indeterminate::after {
     margin-left: 5px;
     display: flex;
     align-items: center;
-    gap: 8px;
-    white-space: nowrap;
+    gap: 5px;
     box-shadow: 0 2px 6px rgba(255, 170, 68, 0.25);
 }
 
 .refresh-btn:hover {
     background: #ffcc77;
+}
+
+.refresh-btn:active {
+    transform: translateY(1px);
+    box-shadow: 0 2px 5px rgba(255, 170, 68, 0.3);
 }
 /* ====================== Кнопка "Перечитать CSV" ====================== */

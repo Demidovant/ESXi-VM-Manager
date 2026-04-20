@@ -384,7 +384,7 @@ export class OperationsManager {
 
         try {
             refreshBtn.disabled = true;
-            refreshBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Обновление...`;
+            // refreshBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Обновление.......`;
 
             const response = await fetch('/api/vms');
             if (!response.ok) throw new Error('Ошибка загрузки');
