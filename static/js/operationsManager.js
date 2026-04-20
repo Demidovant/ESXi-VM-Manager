@@ -8,6 +8,7 @@ export class OperationsManager {
         this.initEventListeners();
         this.setupOperationUpdates();
         this.initOpenCsvButton();
+        this.initRefreshCsvButton();
     }
 
     resetOperationStatus() {
@@ -366,6 +367,41 @@ export class OperationsManager {
                 this.showMessage('Ошибка соединения при попытке открыть файл', true);
             }
         });
+    }
+
+
+        // === Обновление таблицы из CSV ===
+    initRefreshCsvButton() {
+        const refreshBtn = document.getElementById('refresh-csv-btn');
+        if (!refreshBtn) return;
+
+        refreshBtn.addEventListener('click', () => this.refreshVMsFromCSV());
+    }
+
+    async refreshVMsFromCSV() {
+        const refreshBtn = document.getElementById('refresh-csv-btn');
+        const originalText = refreshBtn.innerHTML;
+
+        try {
+            refreshBtn.disabled = true;
+            refreshBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Обновление...`;
+
+            const response = await fetch('/api/vms');
+            if (!response.ok) throw new Error('Ошибка загрузки');
+
+            const data = await response.json();
+
+            this.vmTableManager.renderVMs(data);
+
+            this.showMessage('Таблица успешно обновлена из vm.csv', false);
+
+        } catch (error) {
+            console.error(error);
+            this.showMessage('Не удалось обновить таблицу из CSV', true);
+        } finally {
+            refreshBtn.disabled = false;
+            refreshBtn.innerHTML = originalText;
+        }
     }
 
 }

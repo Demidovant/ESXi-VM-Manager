@@ -535,9 +535,6 @@ input[type="checkbox"]:indeterminate::after {
 
 .open-csv-btn:hover {
     background: #ffcc77;
-    border-color: #ffaa33;
-    /*transform: translateY(-1px);*/
-    /*box-shadow: 0 4px 10px rgba(255, 170, 68, 0.35);*/
 }
 
 .open-csv-btn:active {
@@ -550,3 +547,28 @@ input[type="checkbox"]:indeterminate::after {
     color: #e67e00;
 }
 /* ====================== Кнопка "Открыть список VM" ====================== */
+
+
+/* ====================== Кнопка "Перечитать CSV" ====================== */
+.refresh-btn {
+    background: #ffbb66; /* Приятный бледный оранжевый */
+    color: #333; /* Тёмный текст — лучше читается на светлом фоне */
+    border: 1px solid #ffaa44;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    margin-left: 5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+    box-shadow: 0 2px 6px rgba(255, 170, 68, 0.25);
+}
+
+.refresh-btn:hover {
+    background: #ffcc77;
+}
+/* ====================== Кнопка "Перечитать CSV" ====================== */
