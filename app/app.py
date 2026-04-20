@@ -390,6 +390,34 @@ def open_csv():
         print(f"[X] Ошибка открытия CSV: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
+
+@app.route('/api/esxi-status', methods=['GET'])
+def esxi_status():
+    try:
+        # silent=True — отключаем все сообщения в лог
+        si = connect_to_host(silent=True)
+
+        if si:
+            disconnect_from_host(si, silent=True)  # тоже тихо
+            return jsonify({
+                "status": "online",
+                "host": ESXI_HOST,
+                "message": "ESXi доступен"
+            })
+        else:
+            return jsonify({
+                "status": "offline",
+                "host": ESXI_HOST,
+                "message": "ESXi недоступен"
+            })
+
+    except Exception as e:
+        return jsonify({
+            "status": "offline",
+            "host": ESXI_HOST,
+            "message": "Ошибка подключения"
+        })
+
 def start_flask():
     app.run(host='0.0.0.0', debug=False, port=5000)
 

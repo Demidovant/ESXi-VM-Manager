@@ -43,32 +43,37 @@ def connect_to_host(
         user=ESXI_USER,
         password=ESXI_PASSWORD,
         port=ESXI_PORT,
-        ignore_ssl=IGNORE_SSL
+        ignore_ssl=IGNORE_SSL,
+        silent=False          # ← Новый параметр
 ):
     """
     Подключение к ESXi с обработкой ошибок.
-    Возвращает service_instance или None при ошибке.
+    silent=True — подавляет все print-сообщения (для фоновых проверок)
     """
     try:
-        print(f"Попытка подключения к {host}:{port}...")
+        if not silent:
+            print(f"Попытка подключения к {host}:{port}...")
 
-        # Проверка доступности хоста с таймаутом 3 секунды
+        # Проверка доступности хоста...
         try:
             sock = socket.create_connection((host, port), timeout=3)
             sock.close()
         except socket.timeout:
-            print(f"[X] Не удалось подключиться к {host}:{port}")
+            if not silent:
+                print(f"[X] Не удалось подключиться к {host}:{port}")
             return None
         except socket.error as se:
-            print(f"[X] Ошибка подключения к {host}:{port}: {str(se)}")
+            if not silent:
+                print(f"[X] Ошибка подключения к {host}:{port}: {str(se)}")
             return None
 
-        # Настройка SSL контекста
+        # Настройка SSL...
         context = None
         if ignore_ssl:
             context = ssl._create_unverified_context()
         else:
-            print("[!] Используется строгая проверка SSL сертификата")
+            if not silent:
+                print("[!] Используется строгая проверка SSL сертификата")
             context = ssl.create_default_context()
 
         # Подключение
@@ -80,37 +85,52 @@ def connect_to_host(
             sslContext=context
         )
 
-        print(f"Успешное подключение к {host}")
+        if not silent:
+            print(f"Успешное подключение к {host}")
+
         return si
 
     except vim.fault.InvalidLogin as il:
-        print(f"[X] Ошибка аутентификации: {str(il)}")
+        if not silent:
+            print(f"[X] Ошибка аутентификации: {str(il)}")
     except vim.fault.HostConnectFault as hcf:
-        print(f"[X] Ошибка подключения к хосту: {str(hcf)}")
+        if not silent:
+            print(f"[X] Ошибка подключения к хосту: {str(hcf)}")
     except ssl.SSLError as ssle:
-        print(f"[X] SSL ошибка: {str(ssle)}")
+        if not silent:
+            print(f"[X] SSL ошибка: {str(ssle)}")
     except Exception as e:
-        print(f"[X] Неожиданная ошибка подключения: {str(e)}")
-        print(f"[!] Трассировка ошибки:\n{traceback.format_exc()}")
-
+        if not silent:
+            print(f"[X] Неожиданная ошибка подключения: {str(e)}")
+            print(f"[!] Трассировка ошибки:\n{traceback.format_exc()}")
     finally:
-        print("=" * 70)
+        if not silent:
+            print("=" * 70)
 
     return None
 
 
-def disconnect_from_host(service_instance):
+def disconnect_from_host(service_instance, silent=False):
     """
     Безопасное отключение от ESXi.
+    silent=True — подавляет сообщения
     """
     if service_instance is None:
-        print("[!] Попытка отключения при отсутствующем подключении")
+        if not silent:
+            print("[!] Попытка отключения при отсутствующем подключении")
         return
 
     try:
-        print("Попытка отключения от ESXi...")
+        if not silent:
+            print("Попытка отключения от ESXi...")
+
         Disconnect(service_instance)
-        print("Успешное отключение от ESXi")
+
+        if not silent:
+            print("Успешное отключение от ESXi")
     except Exception as e:
-        print(f"[X] Ошибка при отключении: {str(e)}")
-        print(f"[!] Трассировка ошибки:\n{traceback.format_exc()}")
+        if not silent:
+            print(f"[X] Ошибка при отключении: {str(e)}")
+    finally:
+        if not silent:
+            print("=" * 70)

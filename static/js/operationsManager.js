@@ -9,6 +9,7 @@ export class OperationsManager {
         this.setupOperationUpdates();
         this.initOpenCsvButton();
         this.initRefreshCsvButton();
+        this.initEsxiStatus();
     }
 
     resetOperationStatus() {
@@ -403,5 +404,38 @@ export class OperationsManager {
             refreshBtn.innerHTML = originalText;
         }
     }
+
+
+        // === Индикатор доступности ESXi ===
+    initEsxiStatus() {
+        this.updateEsxiStatus();                    // первая проверка сразу
+        setInterval(() => this.updateEsxiStatus(), 10000);  // каждые 10 секунд
+    }
+
+    async updateEsxiStatus() {
+        const dot = document.getElementById('esxi-dot');
+        const mainText = document.getElementById('esxi-status-main');
+        const hostText = document.getElementById('esxi-status-host');
+
+        try {
+            const response = await fetch('/api/esxi-status');
+            const data = await response.json();
+
+            if (data.status === "online") {
+                dot.className = 'status-dot online';
+                mainText.textContent = "ESXi: Online";
+                hostText.textContent = data.host || ESXI_HOST || '—';
+            } else {
+                dot.className = 'status-dot offline';
+                mainText.textContent = "ESXi: Offline";
+                hostText.textContent = data.host || ESXI_HOST || '—';
+            }
+        } catch (error) {
+            dot.className = 'status-dot offline';
+            mainText.textContent = "ESXi: Offline";
+            hostText.textContent = ESXI_HOST || 'нет соединения';
+        }
+    }
+
 
 }
