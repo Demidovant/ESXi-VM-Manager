@@ -23,4 +23,5 @@ export const SELECTORS = {
     operationSuccess: 'operation-success',
     operationError: 'operation-error',
     operationActive: 'operation-active',
+    refreshCsvBtn: '#refresh-csv-btn',
 };

@@ -177,11 +177,13 @@ export class OperationsManager {
         const cancelBtn = document.querySelector(SELECTORS.cancelBtn);
         const clearFilterBtn = document.querySelector(SELECTORS.clearFilterBtn);
         const selectBox = document.querySelector(SELECTORS.selectBox);
+        const refreshBtn = document.querySelector(SELECTORS.refreshCsvBtn);
 
         executeBtn.disabled = true;
         clearFilterBtn.disabled = true;
         selectBox.disabled = true;
         cancelBtn.disabled = false;
+        refreshBtn.disabled = true;
         this.abortController = new AbortController();
 
         // Блокируем чекбоксы перед началом операций
@@ -296,6 +298,7 @@ export class OperationsManager {
             clearFilterBtn.disabled = false;
             selectBox.disabled = false;
             cancelBtn.disabled = true;
+            refreshBtn.disabled = false;
             this.abortController = null;
             this.currentOperation = null;
             // Разблокируем чекбоксы после завершения операций
@@ -423,17 +426,22 @@ export class OperationsManager {
 
             if (data.status === "online") {
                 dot.className = 'status-dot online';
-                mainText.textContent = "ESXi: Online";
-                hostText.textContent = data.host || ESXI_HOST || '—';
+                // Отображаем тип (ESXi или vCenter) + статус
+                const type = data.type === 'vCenter' ? 'vCenter' : 'ESXi';
+                mainText.textContent = `${type} online`;
+                // Отображаем IP/хост
+                hostText.textContent = data.host || '—';
             } else {
                 dot.className = 'status-dot offline';
-                mainText.textContent = "ESXi: Offline";
-                hostText.textContent = data.host || ESXI_HOST || '—';
+                // Показываем тип, если есть, иначе просто ESXi
+                const type = (data.type === 'vCenter') ? 'vCenter' : (data.type === 'ESXi' ? 'ESXi' : 'Server');
+                mainText.textContent = `${type} offline`;
+                hostText.textContent = data.host || '—';
             }
         } catch (error) {
             dot.className = 'status-dot offline';
-            mainText.textContent = "ESXi: Offline";
-            hostText.textContent = ESXI_HOST || 'нет соединения';
+            mainText.textContent = 'ESXi offline';
+            hostText.textContent = 'Нет соединения';
         }
     }
 

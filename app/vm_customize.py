@@ -271,12 +271,16 @@ def customize_ubuntu_debian(vm, static_ip, netmask, gateway, dns, username, pass
     yaml_content_escaped = yaml_content.replace("'", "'\"'\"'").replace("\n", "\\n")
 
     print("[*] Записываем netplan конфиг...")
-    cmd = f"-c 'echo \"{password}\" | sudo -S sh -c \"printf \\\"{yaml_content_escaped}\\\" > /etc/netplan/01-netcfg.yaml\"'"
+    cmd = f"-c \"printf \\\"{yaml_content_escaped}\\\" > /tmp/01-netcfg.yaml\""
     _execute_guest_command(vm, "/bin/bash", cmd, username, password, service_instance)
 
     print("[*] Заменяем INTERFACE_PLACEHOLDER в YAML на найденный интерфейс...")
-    cmd = "sudo sed -i \"s/INTERFACE_PLACEHOLDER/$(cat /tmp/iface | sed 's/[\\/&]/\\\\&/g' | tr -d '\\n')/g\" /etc/netplan/01-netcfg.yaml"
+    cmd = "sed -i \"s/INTERFACE_PLACEHOLDER/$(cat /tmp/iface | sed 's/[\\/&]/\\\\&/g' | tr -d '\\n')/g\" /tmp/01-netcfg.yaml"
     _execute_guest_command(vm, "/bin/bash", f'-c "{cmd}"', username, password, service_instance)
+
+    print("[*] Копируем /tmp/01-netcfg.yaml")
+    cmd = f"-c 'echo \"{password}\" | sudo -S cp /tmp/01-netcfg.yaml /etc/netplan/01-netcfg.yaml'"
+    _execute_guest_command(vm, "/bin/bash", cmd, username, password, service_instance)
 
     print("[*] Устанавливаем владельца root:root...")
     cmd = f"-c 'echo \"{password}\" | sudo -S chown root:root /etc/netplan/01-netcfg.yaml'"

@@ -574,6 +574,17 @@ input[type="checkbox"]:indeterminate::after {
     transform: translateY(1px);
     box-shadow: 0 2px 5px rgba(255, 170, 68, 0.3);
 }
+
+.refresh-btn:disabled {
+    background: #cccccc;           /* Серый фон */
+    border-color: #aaaaaa;         /* Бледная рамка */
+    color: #666666;                /* Тёмно-серый текст */
+    cursor: not-allowed;           /* Запрещающий курсор */
+    opacity: 0.6;                  /* Дополнительная прозрачность */
+    box-shadow: none;              /* Убираем тень */
+    transform: none;               /* Отключаем анимацию нажатия */
+}
+
 /* ====================== Кнопка "Перечитать CSV" ====================== */
 
 

@@ -1,5 +1,5 @@
 # Для сборки exe
-# pyinstaller --clean --onefile --noconsole --name ESXi_VM_Manager --paths app --add-data "static;static" --add-data "templates;templates" --hidden-import=flask --hidden-import=webview --hidden-import=pyVim --hidden-import=pyVmomi --hidden-import=dotenv --hidden-import=queue --hidden-import=wsproto --hidden-import=simple_websocket --icon static/img/icon.ico app/app.py
+# pyinstaller --clean --onefile --noconsole --name ESXi_VM_Manager --paths app --add-data "static;static" --add-data "templates;templates" --hidden-import=flask --hidden-import=webview --hidden-import=pyVim --hidden-import=pyVmomi --hidden-import=dotenv --hidden-import=queue --hidden-import=wsproto --hidden-import=simple_websocket --hidden-import=paramiko --icon static/img/icon.ico app/app.py
 
 
 import threading
@@ -394,29 +394,33 @@ def open_csv():
 @app.route('/api/esxi-status', methods=['GET'])
 def esxi_status():
     try:
-        # silent=True — отключаем все сообщения в лог
         si = connect_to_host(silent=True)
-
-        if si:
-            disconnect_from_host(si, silent=True)  # тоже тихо
-            return jsonify({
-                "status": "online",
-                "host": ESXI_HOST,
-                "message": "ESXi доступен"
-            })
-        else:
+        if not si:
             return jsonify({
                 "status": "offline",
                 "host": ESXI_HOST,
-                "message": "ESXi недоступен"
-            })
+                "type": "Неизвестный сервер",
+                "message": "Хост недоступен"
+            }), 503
+
+        from vm_operations import is_vcenter
+        host_type = "vCenter" if is_vcenter(si) else "ESXi"
+        disconnect_from_host(si, silent=True)
+
+        return jsonify({
+            "status": "online",
+            "host": ESXI_HOST,
+            "type": host_type,
+            "message": f"{host_type} доступен"
+        })
 
     except Exception as e:
         return jsonify({
             "status": "offline",
             "host": ESXI_HOST,
-            "message": "Ошибка подключения"
-        })
+            "type": "error",
+            "message": f"Ошибка: {str(e)}"
+        }), 503
 
 def start_flask():
     app.run(host='0.0.0.0', debug=False, port=5000)

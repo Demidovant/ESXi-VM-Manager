@@ -23,13 +23,18 @@ try:
     ESXI_USER = os.getenv("ESXI_USER")
     ESXI_PASSWORD = os.getenv("ESXI_PASSWORD")
     ESXI_PORT = int(os.getenv("ESXI_PORT", "443"))
+    SSH_HOST = os.getenv("SSH_HOST")
+    SSH_USER = os.getenv("SSH_USER")
+    SSH_PASSWORD = os.getenv("SSH_PASSWORD", "root")
+    SSH_PORT = int(os.getenv("SSH_PORT", "22"))
 
-    if not all([ESXI_HOST, ESXI_USER, ESXI_PASSWORD]):
+
+    if not all([ESXI_HOST, ESXI_USER, ESXI_PASSWORD, SSH_HOST, SSH_PASSWORD]):
         raise ValueError("Не все обязательные переменные окружения заданы")
 
     IGNORE_SSL = os.getenv("IGNORE_SSL", "true").lower() == "true"
 
-    print(f"Параметры подключения: host={ESXI_HOST}, user={ESXI_USER}, port={ESXI_PORT}, ignore_ssl={IGNORE_SSL}")
+    print(f"Параметры подключения: host={ESXI_HOST}, user={ESXI_USER}, port={ESXI_PORT}, ignore_ssl={IGNORE_SSL}, ssh_host={SSH_HOST}, ssh_user={SSH_USER}, ssh_port={SSH_PORT}")
 except ValueError as ve:
     print(f"[X] Ошибка в параметрах подключения: {str(ve)}")
     sys.exit(1)
@@ -44,7 +49,7 @@ def connect_to_host(
         password=ESXI_PASSWORD,
         port=ESXI_PORT,
         ignore_ssl=IGNORE_SSL,
-        silent=False          # ← Новый параметр
+        silent=False
 ):
     """
     Подключение к ESXi с обработкой ошибок.

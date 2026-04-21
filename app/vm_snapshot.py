@@ -1,3 +1,4 @@
+import time
 from pyVmomi import vim
 from datetime import datetime
 from vm_operations import vm_power_on, vm_power_off, wait_for_task
@@ -126,7 +127,7 @@ def create_snapshot(vm, vm_config, memory=False, quiesce=False):
     try:
         wait_for_task(task, description=f"Создание снапшота '{snapshot_name}'")
         print(f"[+] Снапшот '{snapshot_name}' успешно создан")
-
+        time.sleep(1)
         print("=" * 70)
 
         if was_powered_on:
