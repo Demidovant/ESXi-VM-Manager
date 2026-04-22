@@ -163,4 +163,68 @@ export class VmTableManager {
 
         return { vmOperations, allOperations };
     }
+
+    saveSelectionState() {
+        const state = {
+            groups: this.groupsManager.getSelectedGroups(),
+            operations: {}
+        };
+        // Сохраняем операции для каждой ВМ (учитывая группу + имя)
+        document.querySelectorAll('tr[data-vm]').forEach(row => {
+            const vmName = row.dataset.vm;
+            // Найти группу этой ВМ (она отображается в предыдущем row с классом group-header)
+            let group = '';
+            let prev = row.previousElementSibling;
+            while (prev && !prev.classList.contains('group-header')) {
+                prev = prev.previousElementSibling;
+            }
+            if (prev && prev.classList.contains('group-header')) {
+                group = prev.textContent.trim();
+            }
+            const key = `${group}::${vmName}`;
+            const operations = [];
+            row.querySelectorAll('.operation-checkbox').forEach(cb => {
+                if (cb.checked) operations.push(cb.dataset.operation);
+            });
+            if (operations.length) state.operations[key] = operations;
+        });
+        return state;
+    }
+
+    restoreSelectionState(state) {
+        if (!state) return;
+        // Восстанавливаем группы
+        if (state.groups) {
+            this.groupsManager.setSelectedGroups(state.groups);
+        }
+        // Восстанавливаем операции после того, как таблица отрендерена
+        if (state.operations) {
+            // Перебираем строки таблицы заново
+            document.querySelectorAll('tr[data-vm]').forEach(row => {
+                const vmName = row.dataset.vm;
+                let group = '';
+                let prev = row.previousElementSibling;
+                while (prev && !prev.classList.contains('group-header')) {
+                    prev = prev.previousElementSibling;
+                }
+                if (prev && prev.classList.contains('group-header')) {
+                    group = prev.textContent.trim();
+                }
+                const key = `${group}::${vmName}`;
+                const opsToCheck = state.operations[key] || [];
+                row.querySelectorAll('.operation-checkbox').forEach(cb => {
+                    cb.checked = opsToCheck.includes(cb.dataset.operation);
+                });
+            });
+            // Обновляем состояние заголовочных чекбоксов
+            import('./config.js').then(({ OPERATIONS }) => {
+                OPERATIONS.forEach(op => this.updateHeaderCheckboxState(op));
+            });
+        }
+        // Сбрасываем стили операций
+        document.querySelectorAll('.operation-checkbox').forEach(cb => {
+            cb.classList.remove('operation-success', 'operation-error', 'operation-active');
+        });
+    }
+
 }

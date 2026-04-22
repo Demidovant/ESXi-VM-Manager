@@ -388,17 +388,22 @@ export class OperationsManager {
 
         try {
             refreshBtn.disabled = true;
-            // refreshBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Обновление.......`;
+            // Сохраняем текущее состояние перед обновлением
+            const savedState = this.vmTableManager.saveSelectionState();
 
             const response = await fetch('/api/vms');
             if (!response.ok) throw new Error('Ошибка загрузки');
-
             const data = await response.json();
+
+            const groups = [...new Set(data.map(vm => vm.GROUP_NAME))];
+            this.vmTableManager.groupsManager.updateGroupsList(groups);
 
             this.vmTableManager.renderVMs(data);
 
-            this.showMessage('Таблица успешно обновлена из vm.csv', false);
+            // Восстанавливаем состояние (с учётом удалённых ВМ/групп)
+            this.vmTableManager.restoreSelectionState(savedState);
 
+            this.showMessage('Таблица успешно обновлена из vm.csv', false);
         } catch (error) {
             console.error(error);
             this.showMessage('Не удалось обновить таблицу из CSV', true);

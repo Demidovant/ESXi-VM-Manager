@@ -105,4 +105,50 @@ export class GroupsManager {
     getSelectedGroups() {
         return this.selectedGroups;
     }
+
+    updateGroupsList(groups) {
+        const container = document.querySelector('.checkboxes-list');
+        if (!container) return;
+
+        // Очищаем контейнер
+        container.innerHTML = '';
+
+        // Создаём чекбоксы для каждой группы
+        groups.forEach(group => {
+            const label = document.createElement('label');
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.className = 'group-checkbox';
+            checkbox.value = group;
+
+            const span = document.createElement('span');
+            span.textContent = group;
+
+            label.appendChild(checkbox);
+            label.appendChild(span);
+            container.appendChild(label);
+        });
+
+        // Сбрасываем выбранные группы
+        this.selectedGroups = [];
+        localStorage.removeItem('selectedGroups'); // очищаем сохранённое состояние
+        this.updateSelectedCount();
+
+        // Переинициализируем обработчики событий для новых чекбоксов
+        this.initEventListeners();
+
+        // Оповещаем об изменении (чтобы таблица перерисовалась)
+        this.notifyGroupsChanged();
+    }
+
+    setSelectedGroups(groups) {
+        this.selectedGroups = groups;
+        // Обновляем чекбоксы в DOM
+        document.querySelectorAll('.group-checkbox').forEach(checkbox => {
+            checkbox.checked = groups.includes(checkbox.value);
+        });
+        this.updateSelectedCount();
+        this.notifyGroupsChanged();
+    }
+
 }
